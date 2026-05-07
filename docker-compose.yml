@@ -2,7 +2,7 @@ services:
   db:
     image: pgvector/pgvector:pg17
     env_file:
-      - ./backend/.env
+      - ./.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -19,7 +19,7 @@ services:
   backend:
     build: ./backend
     env_file:
-      - ./backend/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -30,7 +30,7 @@ services:
     build: ./backend
     command: uv run python manage.py qcluster
     env_file:
-      - ./backend/.env
+      - ./.env
     depends_on:
       db:
         condition: service_healthy
@@ -38,7 +38,7 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NUXT_PUBLIC_BACKEND_URL: https://api.ohenriquecedor.com.br
+      NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
 
   nginx:
     image: nginx:alpine
