@@ -1,4 +1,4 @@
-# Farol
+# Onset
 
 Plataforma interna de onboarding de clientes de assessoria com geração de materiais via IA.
 
