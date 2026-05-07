@@ -1,5 +1,6 @@
 export default defineNuxtConfig({
   runtimeConfig: {
+    internalBackendUrl: 'http://localhost:8000',
     public: {
       backendUrl: process.env.NUXT_PUBLIC_BACKEND_URL || 'http://localhost:8000',
     },
@@ -10,8 +11,5 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   colorMode: {
     preference: 'dark',
-  },
-  routeRules: {
-    '/api/**': { proxy: `${process.env.NUXT_BACKEND_PROXY_URL || process.env.NUXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/**` },
   },
 })
