@@ -1,0 +1,69 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    env_file:
+      - ./.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER"]
+      interval: 5s
+      retries: 5
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+
+  backend:
+    image: app-backend
+    env_file:
+      - ./.env
+    networks:
+      - internal
+      - OHenriquecedorNet
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.onset-api.rule=Host(`apionboarding.henriquegoularte.com.br`)"
+        - "traefik.http.routers.onset-api.entrypoints=websecure"
+        - "traefik.http.routers.onset-api.tls.certresolver=letsencrypt"
+        - "traefik.http.services.onset-api.loadbalancer.server.port=8000"
+
+  worker:
+    image: app-worker
+    command: uv run python manage.py qcluster
+    env_file:
+      - ./.env
+    networks:
+      - internal
+
+  frontend:
+    image: app-frontend
+    environment:
+      NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
+    networks:
+      - internal
+      - OHenriquecedorNet
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.onset-app.rule=Host(`onboarding.henriquegoularte.com.br`)"
+        - "traefik.http.routers.onset-app.entrypoints=websecure"
+        - "traefik.http.routers.onset-app.tls.certresolver=letsencrypt"
+        - "traefik.http.services.onset-app.loadbalancer.server.port=3000"
+
+networks:
+  internal:
+    driver: overlay
+  OHenriquecedorNet:
+    external: true
+
+volumes:
+  postgres_data:
+  redis_data:
