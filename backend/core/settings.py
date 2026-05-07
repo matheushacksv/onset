@@ -23,7 +23,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost').split(',')
 
 CSRF_TRUSTED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
 
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
 
 
 # Application definition
