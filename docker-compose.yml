@@ -25,6 +25,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    networks:
+      - default
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.onset-api.rule=Host(`apionboarding.henriquegoularte.com.br`)"
+      - "traefik.http.routers.onset-api.entrypoints=websecure"
+      - "traefik.http.routers.onset-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.onset-api.loadbalancer.server.port=8000"
 
   worker:
     build: ./backend
@@ -39,20 +48,22 @@ services:
     build: ./frontend
     environment:
       NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
+    networks:
+      - default
+      - traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.onset-app.rule=Host(`onboarding.henriquegoularte.com.br`)"
+      - "traefik.http.routers.onset-app.entrypoints=websecure"
+      - "traefik.http.routers.onset-app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.onset-app.loadbalancer.server.port=3000"
 
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - certbot_certs:/etc/letsencrypt
-    depends_on:
-      - backend
-      - frontend
+networks:
+  default:
+  traefik:
+    external: true
+    name: OHenriquecedorNet
 
 volumes:
   postgres_data:
   redis_data:
-  certbot_certs:
