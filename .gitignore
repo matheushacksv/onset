@@ -1,0 +1,34 @@
+# Logs
+logs
+*.log
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[oc]
+backend/.env
+backend/db.sqlite3
+backend/design-system.html
+backend/pytest.ini
+backend/docker-compose.yml
+backend/.pytest_cache
+backend/.venv
+backend/staticfiles/
+backend/onboarding/knowledge/
+backend/onboarding/tests
+
+# Nuxt dev/build outputs
+frontend/.nuxt
+frontend/.output
+frontend/node_modules
+
+# Misc
+TODO.MD
+formulario-modelo.html
+.DS_Store
+.fleet
+.idea

@@ -1,0 +1,159 @@
+<template>
+  <div class="min-h-screen bg-neutral-100 dark:bg-[#0a0a0a] flex transition-colors duration-200">
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-full w-14 flex flex-col items-center py-4 gap-2 bg-black/[0.03] dark:bg-white/[0.03] border-r border-black/[0.06] dark:border-white/[0.06] z-10">
+      <!-- Nav icons -->
+      <nav class="flex flex-col items-center gap-1 flex-1">
+        <!-- Home -->
+        <NuxtLink
+          to="/"
+          class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors"
+          :class="$route.path === '/' ? 'bg-black/10 dark:bg-white/10 text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/70'"
+        >
+          <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Home
+          </span>
+        </NuxtLink>
+
+        <!-- Onboarding (Assessor only) -->
+        <NuxtLink
+          v-if="hasRole('Assessor')"
+          to="/onboarding"
+          class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors"
+          :class="$route.path.startsWith('/onboarding') ? 'bg-black/10 dark:bg-white/10 text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/70'"
+        >
+          <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM3 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 9.374 21c-2.331 0-4.512-.645-6.374-1.766Z" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Onboarding
+          </span>
+        </NuxtLink>
+      </nav>
+
+      <!-- Bottom: theme toggle + avatar -->
+      <div class="flex flex-col items-center gap-2">
+        <!-- Dark / Light toggle -->
+        <button
+          class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors text-neutral-400 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/70"
+          @click="toggleColorMode"
+        >
+          <!-- Sun: shown in dark mode, click to go light -->
+          <svg v-if="isDark" class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+          </svg>
+          <!-- Moon: shown in light mode, click to go dark -->
+          <svg v-else class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            {{ isDark ? 'Modo claro' : 'Modo escuro' }}
+          </span>
+        </button>
+
+        <!-- Avatar + submenu -->
+        <div class="relative" ref="avatarRef">
+          <button
+            class="flex items-center justify-center w-9 h-9 rounded-full ring-1 ring-black/10 dark:ring-white/10 overflow-hidden hover:ring-black/30 dark:hover:ring-white/30 transition-all"
+            @click="menuOpen = !menuOpen"
+          >
+            <img v-if="user?.avatar" :src="user.avatar" class="w-full h-full object-cover" />
+            <span v-else class="text-neutral-400 dark:text-white/40 text-sm font-medium bg-black/5 dark:bg-white/5 w-full h-full flex items-center justify-center">
+              {{ user?.name?.[0]?.toUpperCase() || '?' }}
+            </span>
+          </button>
+
+          <!-- Submenu -->
+          <Transition
+            enter-active-class="transition-all duration-150 ease-out"
+            enter-from-class="opacity-0 translate-x-1"
+            enter-to-class="opacity-100 translate-x-0"
+            leave-active-class="transition-all duration-100 ease-in"
+            leave-from-class="opacity-100 translate-x-0"
+            leave-to-class="opacity-0 translate-x-1"
+          >
+            <div
+              v-if="menuOpen"
+              class="absolute left-full bottom-0 ml-2 w-44 bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10 rounded-xl shadow-xl dark:shadow-none overflow-hidden"
+            >
+              <!-- User info -->
+              <div class="px-3 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06]">
+                <p class="text-neutral-900 dark:text-white text-sm font-medium truncate">{{ user?.name || 'Usuário' }}</p>
+                <p class="text-neutral-400 dark:text-neutral-500 text-xs truncate">{{ user?.email }}</p>
+              </div>
+
+              <div class="p-1">
+                <NuxtLink
+                  to="/profile"
+                  class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white text-sm transition-colors"
+                  @click="menuOpen = false"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                  </svg>
+                  Perfil
+                </NuxtLink>
+
+                <NuxtLink
+                  to="/settings"
+                  class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-900 dark:hover:text-white text-sm transition-colors"
+                  @click="menuOpen = false"
+                >
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                  Configurações
+                </NuxtLink>
+
+                <div class="border-t border-black/[0.06] dark:border-white/[0.06] mt-1 pt-1">
+                  <button
+                    class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-red-500/70 hover:bg-red-500/10 hover:text-red-500 text-sm transition-colors"
+                    @click="handleLogout"
+                  >
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                    </svg>
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="flex-1 ml-14">
+      <slot />
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
+
+const { logout, fetchUser, user, hasRole } = useAuth()
+const colorMode = useColorMode()
+
+const menuOpen = ref(false)
+const avatarRef = ref<HTMLElement | null>(null)
+
+const isDark = computed(() => colorMode.value === 'dark')
+const toggleColorMode = () => {
+  colorMode.preference = isDark.value ? 'light' : 'dark'
+}
+
+await fetchUser()
+
+const handleLogout = () => {
+  menuOpen.value = false
+  logout()
+}
+
+onClickOutside(avatarRef, () => { menuOpen.value = false })
+</script>
