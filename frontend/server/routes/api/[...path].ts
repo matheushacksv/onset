@@ -1,4 +1,7 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  return proxyRequest(event, `${config.internalBackendUrl}${event.path}`)
+  const host = getRequestHost(event)
+  return proxyRequest(event, `${config.internalBackendUrl}${event.path}`, {
+    headers: { host },
+  })
 })
