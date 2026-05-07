@@ -32,7 +32,7 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.onset-api.rule=Host(`apionboarding.henriquegoularte.com.br`)"
         - "traefik.http.routers.onset-api.entrypoints=websecure"
-        - "traefik.http.routers.onset-api.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.onset-api.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.onset-api.loadbalancer.server.port=8000"
 
   worker:
@@ -55,7 +55,7 @@ services:
         - "traefik.enable=true"
         - "traefik.http.routers.onset-app.rule=Host(`onboarding.henriquegoularte.com.br`)"
         - "traefik.http.routers.onset-app.entrypoints=websecure"
-        - "traefik.http.routers.onset-app.tls.certresolver=letsencrypt"
+        - "traefik.http.routers.onset-app.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.onset-app.loadbalancer.server.port=3000"
 
 networks:
