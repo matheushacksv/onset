@@ -47,6 +47,7 @@ services:
     image: app-frontend
     environment:
       NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
+      NUXT_BACKEND_PROXY_URL: http://backend:8000
     networks:
       - internal
       - OHenriquecedorNet

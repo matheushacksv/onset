@@ -12,6 +12,6 @@ export default defineNuxtConfig({
     preference: 'dark',
   },
   routeRules: {
-    '/api/**': { proxy: `${process.env.NUXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/**` },
+    '/api/**': { proxy: `${process.env.NUXT_BACKEND_PROXY_URL || process.env.NUXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/api/**` },
   },
 })
