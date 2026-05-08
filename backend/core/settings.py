@@ -160,6 +160,15 @@ STORAGES = {
     }
 }
 
+# Cache (compartilhado entre web e workers via Postgres)
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache',
+    }
+}
+
 # Django-Q2
 
 Q_CLUSTER = {

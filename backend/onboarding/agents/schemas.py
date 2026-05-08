@@ -78,3 +78,26 @@ class MaterialPatchIn(Schema):
     crm: Optional[CRMScript] = None
     closing: Optional[ClosingMaterial] = None
     qualification: Optional[QualificationScript] = None
+
+#* ----- Assistant -----
+
+class AssistantFocus(Schema):
+    funnel_key: Optional[str] = None
+    stage_idx: Optional[int] = None
+    day: Optional[int] = None
+
+class AssistantHistoryMessage(Schema):
+    role: Literal['user', 'assistant']
+    content: str
+
+class AssistantIn(Schema):
+    section: Literal['crm', 'closing', 'qualification']
+    message: str
+    focus: Optional[AssistantFocus] = None
+    history: list[AssistantHistoryMessage] = []
+
+class AssistantOut(Schema):
+    message: str
+    section: str
+    value: dict
+    changes: list[str]
