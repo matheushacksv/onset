@@ -2,8 +2,6 @@
 from ninja import Router, File, Status
 from ninja import UploadedFile
 from ninja_jwt.tokens import RefreshToken
-# Django email
-from django.core.mail import send_mail
 # Django enconding
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -13,10 +11,11 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 # Models and Schemas imports
 from .models import User
-from .schemas import LoginIn, UserOut, UpdateMeIn, TokenOut, RefreshIn, ResetPasswordIn, ForgotPasswordIn
+from .schemas import LoginIn, UserOut, UpdateMeIn, TokenOut, RefreshIn, ResetPasswordIn, ForgotPasswordIn, CreateUserIn
 from core.errors import Error
 # Django Auth imports
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import Group
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
 # Accounts Tasks
@@ -127,4 +126,20 @@ def reset_password(request, data: ResetPasswordIn):
 @router.get('/users', response=list[UserOut])
 def list_users(request):
     return User.objects.filter(is_active=True).prefetch_related('groups').order_by('name')
+
+@router.post('/create-user', response={201: UserOut, 400: Error})
+def create_user(request, data: CreateUserIn):
+    
+    if User.objects.filter(email=data.email).exists():
+        return Status(400, Error(detail='Já existe usuário com esse email'))
+    user = User.objects.create_user(email=data.email, password=data.password, name=data.name or '')
+
+    if data.role:
+        user.groups.set(Group.objects.filter(name__in=data.role))
+
+    return Status(201, user)
+
+@router.get('/roles', response=list[str])
+def list_roles(request):
+    return list(Group.objects.values_list('name', flat=True).order_by('name'))
 

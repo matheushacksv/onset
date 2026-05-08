@@ -44,7 +44,7 @@ const pendingMaterial = computed(() => totalOnboardings.value - withMaterial.val
 
 function roleLabel(role: string[]) {
   if (!role.length) return 'Sem função'
-  return role[0]
+  return role.join(', ')
 }
 
 function initials(name: string | null, email: string) {
@@ -127,7 +127,19 @@ onMounted(async () => {
 
     <!-- Equipe -->
     <div>
-      <h2 class="text-sm font-medium text-white/50 uppercase tracking-widest mb-4">Equipe</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-medium text-white/50 uppercase tracking-widest">Equipe</h2>
+        <button
+          v-if="user?.is_superuser"
+          class="text-xs font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 ring-1 ring-white/10 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+          @click="router.push('/equipe/novo')"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Novo funcionário
+        </button>
+      </div>
       <div v-if="!loading" class="bg-white/5 backdrop-blur-xl ring-1 ring-white/10 rounded-2xl divide-y divide-white/5">
         <div
           v-for="member in team"
@@ -152,9 +164,21 @@ onMounted(async () => {
             <p class="text-sm font-medium text-white truncate">{{ member.name || member.email }}</p>
             <p class="text-xs text-white/40 truncate">{{ member.email }}</p>
           </div>
-          <span class="shrink-0 text-xs text-white/50 bg-white/5 ring-1 ring-white/10 px-3 py-1 rounded-full">
-            {{ roleLabel(member.role) }}
-          </span>
+          <div class="shrink-0 flex flex-wrap gap-1.5 justify-end max-w-[60%]">
+            <span
+              v-if="!member.role.length"
+              class="text-xs text-white/40 bg-white/5 ring-1 ring-white/10 px-3 py-1 rounded-full"
+            >
+              Sem função
+            </span>
+            <span
+              v-for="r in member.role"
+              :key="r"
+              class="text-xs text-white/50 bg-white/5 ring-1 ring-white/10 px-3 py-1 rounded-full"
+            >
+              {{ r }}
+            </span>
+          </div>
         </div>
         <div v-if="!team.length" class="px-6 py-8 text-center text-sm text-white/30">
           Nenhum funcionário encontrado.

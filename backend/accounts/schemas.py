@@ -26,6 +26,19 @@ class UserOut(Schema):
     @staticmethod
     def resolve_role(obj):
         return list(obj.groups.values_list('name', flat=True))
+    
+class CreateUserIn(Schema):
+    email: EmailStr
+    name: Optional[str]
+    role: Optional[list[str]]
+    password: str
+    repeat_password: str
+
+    @model_validator(mode='after')
+    def check_password_match(self) -> Self: 
+        if self.password != self.repeat_password:
+            raise ValueError('Passwords do not match')
+        return self
 
 class UpdateMeIn(Schema):
     name: Optional[str] = None
