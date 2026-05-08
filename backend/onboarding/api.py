@@ -2,7 +2,8 @@ from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
 from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut
-from .agents.schemas import MaterialOut, MaterialPatchIn
+from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
+from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
 from core.errors import Error
 from django.shortcuts import get_object_or_404
@@ -340,6 +341,53 @@ def copy_material(request, onboarding_id: int, source_id: int):
         crm=source_material.crm, closing=source_material.closing, qualification=source_material.qualification
     )
     return Status(201, material)
+
+@router.post('/{onboarding_id}/materials/assist/prepare', response={202: dict, 400: Error, 403: Error, 404: Error})
+def prepare_assistant(request, onboarding_id: int):
+    """Dispara prewarm em background pra popular cache OpenAI. Fire-and-forget."""
+    from django.core.cache import cache
+    if _is_desenvolvedor(request.auth):
+        return Status(403, Error(detail='Acesso negado'))
+    onboarding = get_object_or_404(OnboardingForm, id=onboarding_id)
+    if not request.auth.is_superuser and onboarding.assessor_id != request.auth.id:
+        return Status(403, Error(detail='Acesso negado'))
+    if not hasattr(onboarding, 'material') or onboarding.material.status != GeneratedMaterial.Status.COMPLETE:
+        return Status(400, Error(detail='Material indisponível'))
+
+    # debounce: 1 task por material a cada 10 min
+    cache_key = f'assistant_warmed:{onboarding.material.id}'
+    if cache.get(cache_key):
+        return Status(202, {'status': 'already_warm'})
+    cache.set(cache_key, True, timeout=600)
+    async_task(
+        'onboarding.tasks.prewarm_assistant_task',
+        onboarding.material.id,
+        q_options={'timeout': 300, 'retry': 600},
+    )
+    return Status(202, {'status': 'warming'})
+
+
+@router.post('/{onboarding_id}/materials/assist', response={200: AssistantOut, 400: Error, 403: Error, 404: Error})
+def assist_material(request, onboarding_id: int, payload: AssistantIn):
+    if _is_desenvolvedor(request.auth):
+        return Status(403, Error(detail='Acesso negado'))
+    onboarding = get_object_or_404(OnboardingForm, id=onboarding_id)
+    if not request.auth.is_superuser and onboarding.assessor_id != request.auth.id:
+        return Status(403, Error(detail='Acesso negado'))
+    if not hasattr(onboarding, 'material') or onboarding.material.status != GeneratedMaterial.Status.COMPLETE:
+        return Status(400, Error(detail='Material indisponível'))
+
+    session = AssistantSession(
+        material=onboarding.material,
+        section=payload.section,
+        focus=payload.focus.dict() if payload.focus else None,
+    )
+    result = session.run(
+        message=payload.message,
+        history=[m.dict() for m in payload.history],
+    )
+    return Status(200, result)
+
 
 @router.get('/materials/library', response=list[MaterialLibraryItemOut])
 def list_materials(request):

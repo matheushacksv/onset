@@ -38,10 +38,21 @@ def _download_knowledge() -> str:
 _knowledge: Knowledge | None = None
 
 
+def _runtime_knowledge() -> Knowledge:
+    """Conecta ao PgVector existente. Sem download/insert. Use em runtime."""
+    return Knowledge(
+        vector_db=PgVector(
+            table_name='onboarding_kb',
+            db_url=_db_url(),
+        )
+    )
+
+
 def get_knowledge() -> Knowledge:
+    """Singleton runtime. Assume que `build_knowledge` rodou no deploy."""
     global _knowledge
     if _knowledge is None:
-        _knowledge = build_knowledge(recreate=False)
+        _knowledge = _runtime_knowledge()
     return _knowledge
 
 
@@ -59,12 +70,9 @@ def _db_url() -> str:
 
 
 def build_knowledge(recreate: bool = False) -> Knowledge:
-    knowledge = Knowledge(
-        vector_db=PgVector(
-            table_name='onboarding_kb',
-            db_url=_db_url(),
-        )
-    )
+    """Deploy-time: baixa MDs do S3 e indexa no PgVector. Idempotente.
+    Em runtime use get_knowledge()."""
+    knowledge = _runtime_knowledge()
 
     if recreate:
         knowledge.vector_db.drop()
@@ -89,12 +97,14 @@ FUNIL_LABELS = {
     'default': 'Pipeline'
 }
 
+
+MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'))
+
 class MaterialWorkflow:
 
     def __init__(self):
         knowledge = get_knowledge()
-        MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'))
-
+        
         self.validator = Agent(model=MODEL, instructions=VALIDATOR_PROMPT, knowledge=knowledge, add_knowledge_to_context=True, search_knowledge=True, read_tool_call_history=True, markdown=True, output_schema=QualityAlerts)
         self.crm_agent = Agent(model=MODEL, tools=[KnowledgeTools(num_documents=6)], instructions=CRM_PROMPT, knowledge=knowledge, add_knowledge_to_context=True, search_knowledge=True, read_tool_call_history=True, markdown=True, output_schema=CRMScript)
         self.closing_agent = Agent(model=MODEL, instructions=CLOSING_PROMPT, knowledge=knowledge, add_knowledge_to_context=True, search_knowledge=True, read_tool_call_history=True, markdown=True, output_schema=ClosingMaterial)
