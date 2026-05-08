@@ -225,3 +225,15 @@ class OnboardingOut(Schema):
         except Exception:
             return None
 
+
+class MaterialLibraryItemOut(Schema):
+    id: int
+    pipedrive_deal_name: str
+    assessor_name: Optional[str] = None
+    updated_at: datetime
+
+    @staticmethod
+    def resolve_assessor_name(obj):
+        return obj.assessor.name if obj.assessor else None
+    
+
