@@ -134,18 +134,6 @@
             </button>
           </div>
 
-          <button
-            v-if="!isDesenvolvedor"
-            type="button"
-            disabled
-            title="Em breve"
-            class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white/30 bg-white/5 ring-1 ring-white/10 rounded-full cursor-not-allowed"
-          >
-            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
-            </svg>
-            Sugerir com IA (em breve)
-          </button>
         </div>
 
         <!-- ── CRM ── -->
@@ -481,18 +469,33 @@
       </template>
     </div>
 
-    <!-- Botão flutuante: toggle painel de dados -->
-    <button
-      v-if="materials && materials.status === 'complete' && !dataDrawerOpen"
-      type="button"
-      class="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-white/10 hover:bg-white/15 backdrop-blur-xl ring-1 ring-white/15 text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors shadow-xl"
-      @click="dataDrawerOpen = true"
+    <!-- Botões flutuantes: toggle painéis -->
+    <div
+      v-if="materials && materials.status === 'complete' && !dataDrawerOpen && !assistantOpen"
+      class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2"
     >
-      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
-      </svg>
-      Ver dados
-    </button>
+      <button
+        v-if="!isDesenvolvedor"
+        type="button"
+        class="flex items-center gap-2 bg-emerald-400/15 hover:bg-emerald-400/25 backdrop-blur-xl ring-1 ring-emerald-400/30 text-emerald-200 text-sm font-medium px-4 py-2.5 rounded-full transition-colors shadow-xl"
+        @click="assistantOpen = true"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+        </svg>
+        Assistente IA
+      </button>
+      <button
+        type="button"
+        class="flex items-center gap-2 bg-white/10 hover:bg-white/15 backdrop-blur-xl ring-1 ring-white/15 text-white text-sm font-medium px-4 py-2.5 rounded-full transition-colors shadow-xl"
+        @click="dataDrawerOpen = true"
+      >
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
+        </svg>
+        Ver dados
+      </button>
+    </div>
 
     <ObCreateMaterialModal
       :open="createModalOpen"
@@ -509,6 +512,16 @@
       :assessor-name="assessorName"
       @close="dataDrawerOpen = false"
     />
+
+    <ObAssistantPanel
+      :open="assistantOpen"
+      :onboarding-id="id"
+      :material="editedMaterials"
+      :section="assistantSection"
+      :focus="assistantFocus"
+      :focus-label="assistantFocusLabel"
+      @close="assistantOpen = false"
+    />
   </div>
 </template>
 
@@ -522,7 +535,7 @@ const id = route.params.id as string
 
 const {
   materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
-  createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
+  createManualMaterial, copyMaterialFrom, loadMaterialLibrary, prepareAssistant,
   dealName, assessorName, load, form,
 } = useOnboarding(id)
 
@@ -648,7 +661,39 @@ const handleRegenerate = async () => {
 
 const createModalOpen = ref(false)
 const dataDrawerOpen = ref(false)
+const assistantOpen = ref(false)
 const creatingMaterial = ref(false)
+
+const assistantSection = computed<'crm' | 'closing' | 'qualification'>(() => {
+  if (activeTab.value === 'fechamento') return 'closing'
+  if (activeTab.value === 'qualificacao') return 'qualification'
+  return 'crm'
+})
+
+const assistantFocus = computed(() => {
+  if (assistantSection.value !== 'crm') return {}
+  const f = currentFunnel.value
+  if (!f) return {}
+  return {
+    funnel_key: f.key,
+    stage_idx: f.stages.length ? activeStage.value : null,
+  }
+})
+
+const assistantFocusLabel = computed(() => {
+  if (assistantSection.value !== 'crm') return ''
+  const f = currentFunnel.value
+  if (!f) return ''
+  const stage = f.stages[activeStage.value]
+  return stage?.name ? `${f.name} · ${stage.name}` : f.name
+})
+
+watch(assistantOpen, (v) => { if (v) dataDrawerOpen.value = false })
+watch(dataDrawerOpen, (v) => { if (v) assistantOpen.value = false })
+
+watch(materials, (m) => {
+  if (m?.status === 'complete') prepareAssistant()
+}, { immediate: true })
 
 function addCrmStage() {
   const funnel = currentFunnel.value

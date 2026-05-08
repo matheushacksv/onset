@@ -318,6 +318,15 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     return items.map(it => ({ ...it, pipedrive_deal_name: cleanDealName(it.pipedrive_deal_name) }))
   }
 
+  let _prewarmFired = false
+  const prepareAssistant = async () => {
+    if (_prewarmFired) return
+    _prewarmFired = true
+    try {
+      await fetchAuth(`/api/onboarding/${resolvedId}/materials/assist/prepare`, { method: 'POST' })
+    } catch { /* fire-and-forget */ }
+  }
+
   const saveMaterials = async (patch: Partial<Pick<MaterialOut, 'crm' | 'closing' | 'qualification'>>) => {
     const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials`, {
       method: 'PATCH',
@@ -432,5 +441,6 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     PLANOS,
     materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
     createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
+    prepareAssistant,
   }
 }
