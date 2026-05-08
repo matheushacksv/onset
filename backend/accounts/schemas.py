@@ -21,6 +21,8 @@ class UserOut(Schema):
     email: str
     avatar: Optional[str] = None
     is_superuser: bool = False
+    is_staff: bool = False
+    is_active: bool = True
     role: list[str] = []
 
     @staticmethod
@@ -29,8 +31,9 @@ class UserOut(Schema):
     
 class CreateUserIn(Schema):
     email: EmailStr
-    name: Optional[str]
-    role: Optional[list[str]]
+    name: Optional[str] = None
+    role: Optional[list[str]] = None
+    is_staff: Optional[bool] = False
     password: str
     repeat_password: str
 
@@ -50,6 +53,12 @@ class UpdateMeIn(Schema):
         if self.new_password and not self.current_password:
             raise ValueError('To change your password, inform your actual password')
         return self
+
+class UpdateUserIn(Schema):
+    is_active: Optional[bool] = None
+    is_staff: Optional[bool] = None
+    role: Optional[list[str]] = None
+
 
 # Passwords Reset Schemas
 

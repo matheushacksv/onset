@@ -9,9 +9,11 @@ from django.utils.encoding import force_bytes
 # Django Storage
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
+# Django Shortcuts
+from django.shortcuts import get_object_or_404
 # Models and Schemas imports
 from .models import User
-from .schemas import LoginIn, UserOut, UpdateMeIn, TokenOut, RefreshIn, ResetPasswordIn, ForgotPasswordIn, CreateUserIn
+from .schemas import LoginIn, UserOut, UpdateMeIn, TokenOut, RefreshIn, ResetPasswordIn, ForgotPasswordIn, CreateUserIn, UpdateUserIn
 from core.errors import Error
 # Django Auth imports
 from django.contrib.auth import authenticate
@@ -38,7 +40,6 @@ def user_login(request, data: LoginIn):
     refresh = RefreshToken.for_user(user)
 
     return Status(200, TokenOut(access=str(refresh.access_token), refresh=str(refresh)))
-
 
 @router.post('/refresh', response={200: TokenOut, 401: Error}, auth=None)
 def refresh_token(request, data: RefreshIn):
@@ -125,15 +126,22 @@ def reset_password(request, data: ResetPasswordIn):
 
 @router.get('/users', response=list[UserOut])
 def list_users(request):
-    return User.objects.filter(is_active=True).prefetch_related('groups').order_by('name')
+    qs = User.objects.prefetch_related('groups').order_by('name')
+    if not (request.auth.is_superuser or request.auth.is_staff):
+        qs = qs.filter(is_active=True)
+    return qs
 
 @router.post('/create-user', response={201: UserOut, 400: Error})
 def create_user(request, data: CreateUserIn):
     
     if User.objects.filter(email=data.email).exists():
         return Status(400, Error(detail='Já existe usuário com esse email'))
-    user = User.objects.create_user(email=data.email, password=data.password, name=data.name or '')
-
+    user = User.objects.create_user(
+        email=data.email, 
+        password=data.password, 
+        name=data.name or '',
+        is_staff=bool(data.is_staff)
+        )
     if data.role:
         user.groups.set(Group.objects.filter(name__in=data.role))
 
@@ -143,3 +151,18 @@ def create_user(request, data: CreateUserIn):
 def list_roles(request):
     return list(Group.objects.values_list('name', flat=True).order_by('name'))
 
+@router.patch('/{user_id}', response={200: UserOut, 403: Error, 404: Error})
+def edit_member(request, user_id: int, data: UpdateUserIn):
+    if not request.auth.is_superuser:
+        return Status(403, Error(detail='Não autorizado'))
+    user = get_object_or_404(User, id=user_id)
+    if user.id == request.auth.id and data.is_active is False:
+        return Status(400, Error(detail='Não pode desativar a própria conta'))
+    if data.is_active is not None:
+        user.is_active = data.is_active
+    if data.is_staff is not None:
+        user.is_staff = data.is_staff
+    user.save()
+    if data.role is not None:
+        user.groups.set(Group.objects.filter(name__in=data.role))
+    return Status(200, user)
