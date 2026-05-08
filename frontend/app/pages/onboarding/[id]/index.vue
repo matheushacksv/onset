@@ -614,15 +614,16 @@
             </p>
             <button
               class="px-8 py-3 bg-white text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center gap-2"
-              :disabled="materialsGenerating"
-              @click="generateMaterials"
+              :disabled="materialsGenerating || creatingMaterial"
+              @click="createModalOpen = true"
             >
-              <svg v-if="materialsGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <svg v-if="materialsGenerating || creatingMaterial" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
               </svg>
-              {{ materialsGenerating ? 'Iniciando...' : '✦ Gerar Materiais com IA' }}
+              {{ materialsGenerating ? 'Iniciando...' : creatingMaterial ? 'Criando...' : '✦ Criar material' }}
             </button>
+            <p class="text-xs text-white/30">IA, em branco ou copiar de outro onboarding</p>
           </div>
 
           <!-- pending / running: spinner -->
@@ -702,6 +703,14 @@
         </div>
       </div>
     </div>
+
+    <ObCreateMaterialModal
+      :open="createModalOpen"
+      :loading="creatingMaterial || materialsGenerating"
+      :load-library="loadMaterialLibrary"
+      @close="createModalOpen = false"
+      @create="handleCreateMaterial"
+    />
   </div>
 </template>
 
@@ -715,7 +724,34 @@ const {
   toggleChip, toggleFunil, selectPlano, addEtapa, addBonus,
   PLANOS,
   materials, materialsGenerating, loadMaterials, generateMaterials,
+  createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
 } = useOnboarding(id)
+
+const createModalOpen = ref(false)
+const creatingMaterial = ref(false)
+const router = useRouter()
+
+const handleCreateMaterial = async (payload: { mode: 'ai' | 'blank' | 'copy'; sourceId?: number }) => {
+  creatingMaterial.value = true
+  try {
+    if (payload.mode === 'ai') {
+      createModalOpen.value = false
+      await generateMaterials()
+    } else if (payload.mode === 'blank') {
+      await createManualMaterial()
+      createModalOpen.value = false
+      router.push(`/onboarding/${id}/materials`)
+    } else if (payload.mode === 'copy' && payload.sourceId) {
+      await copyMaterialFrom(payload.sourceId)
+      createModalOpen.value = false
+      router.push(`/onboarding/${id}/materials`)
+    }
+  } catch (err: any) {
+    alert(err?.data?.detail || err?.message || 'Erro ao criar material')
+  } finally {
+    creatingMaterial.value = false
+  }
+}
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Rascunho',

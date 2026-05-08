@@ -168,7 +168,7 @@ if (!hasRole('Assessor') && !hasRole('Desenvolvedor')) await navigateTo('/')
 
 const isDesenvolvedor = computed(() => user.value?.roles?.includes('Desenvolvedor') && !user.value?.is_superuser)
 
-const cleanDealName = (name: string) => name.replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim()
+import { cleanDealName } from '~/composables/useOnboarding'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Rascunho',
