@@ -9,6 +9,18 @@ export default defineNuxtConfig({
   devtools: { enabled: process.env.NODE_ENV !== 'production' },
   modules: ['@nuxt/ui', '@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
+  app: {
+    head: {
+      title: 'Onset — Plataforma',
+      titleTemplate: '%s · Onset',
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      ],
+      meta: [
+        { name: 'description', content: 'Plataforma interna Onset' },
+      ],
+    },
+  },
   colorMode: {
     preference: 'dark',
   },
