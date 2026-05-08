@@ -3,34 +3,36 @@
     <div v-if="loading" class="loading">Carregando...</div>
     <div v-else-if="!data" class="loading">Materiais não encontrados.</div>
     <template v-else>
-      <h1 class="section-title">Script CRM — {{ dealName }}</h1>
-      <div class="kanban-board">
-        <div v-for="(stage, si) in data.crm?.stages" :key="si" class="kanban-col">
-          <div class="kanban-header">
-            <span class="kanban-num">{{ si + 1 }}</span>
-            <span class="kanban-name">{{ stage.name }}</span>
-          </div>
-          <div class="kanban-body">
-            <p class="label">Objetivo</p>
-            <p class="body">{{ stage.objective }}</p>
-            <p class="label">Critério de avanço</p>
-            <p class="body">{{ stage.advance_criteria }}</p>
-            <p class="label dev-label">Dev</p>
-            <p class="body dev-body">{{ stage.dev_instructions }}</p>
-            <div class="cadence">
-              <p class="label">Cadência</p>
-              <div v-for="day in stage.cadence" :key="day.day" class="day">
-                <p class="day-label">Dia {{ day.day }}</p>
-                <div v-for="action in day.actions" :key="action.channel + action.message" class="action">
-                  <span class="channel-badge" :class="`channel-badge-${action.channel?.toLowerCase().replace('ç','c').replace('ã','a') || 'default'}`">{{ action.channel }}</span>
-                  <p class="body">{{ action.message }}</p>
-                  <p v-if="action.instructions" class="instructions">{{ action.instructions }}</p>
+      <template v-for="(funnel, fi) in data.crm?.funnels" :key="fi">
+        <h1 class="section-title">Script CRM — {{ dealName }} · {{ funnel.name || funnel.key }}</h1>
+        <div class="kanban-board" :class="{ 'page-break': fi > 0 }">
+          <div v-for="(stage, si) in funnel.stages" :key="si" class="kanban-col">
+            <div class="kanban-header">
+              <span class="kanban-num">{{ si + 1 }}</span>
+              <span class="kanban-name">{{ stage.name }}</span>
+            </div>
+            <div class="kanban-body">
+              <p class="label">Objetivo</p>
+              <p class="body">{{ stage.objective }}</p>
+              <p class="label">Critério de avanço</p>
+              <p class="body">{{ stage.advance_criteria }}</p>
+              <p class="label dev-label">Dev</p>
+              <p class="body dev-body">{{ stage.dev_instructions }}</p>
+              <div class="cadence">
+                <p class="label">Cadência</p>
+                <div v-for="day in stage.cadence" :key="day.day" class="day">
+                  <p class="day-label">Dia {{ day.day }}</p>
+                  <div v-for="action in day.actions" :key="action.channel + action.message" class="action">
+                    <span class="channel-badge" :class="`channel-badge-${action.channel?.toLowerCase().replace('ç','c').replace('ã','a') || 'default'}`">{{ action.channel }}</span>
+                    <p class="body">{{ action.message }}</p>
+                    <p v-if="action.instructions" class="instructions">{{ action.instructions }}</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </template>
   </div>
 </template>
@@ -164,4 +166,5 @@ onMounted(async () => {
 .channel-badge-email    { background: #fef9c3; color: #854d0e; }
 .channel-badge-auto     { background: #f3e8ff; color: #6b21a8; }
 .channel-badge-default  { background: #f0f0f0; color: #555; }
+.page-break { page-break-before: always; margin-top: 10px; }
 </style>

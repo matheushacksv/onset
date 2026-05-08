@@ -7,7 +7,7 @@ from agno.vectordb.pgvector import PgVector
 from decouple import config
 from pathlib import Path
 from .prompts import VALIDATOR_PROMPT, CRM_PROMPT, CLOSING_PROMPT, QUAL_PROMPT
-from .schemas import CRMScript, ClosingMaterial, QualificationScript, GeneratedMaterialResult, QualityAlerts
+from .schemas import CRMScript, ClosingMaterial, QualificationScript, GeneratedMaterialResult, QualityAlerts, CRMFunnel
 from .contexts_functions import crm_context, closing_context, qual_context, onboarding_to_dict
 from agno.tools.knowledge import KnowledgeTools
 import tempfile
@@ -79,6 +79,15 @@ def build_knowledge(recreate: bool = False) -> Knowledge:
 
     return knowledge
 
+FUNIL_LABELS = {
+    'trafego': 'Tráfego Pago',
+    'prospeccao': 'Prospecção Ativa',
+    'social': 'Social Selling',
+    'carteira': 'Carteira / Reativação',
+    'posvenda': 'Pós-venda / Indicação',
+    'custom': 'Funil Customizado',
+    'default': 'Pipeline'
+}
 
 class MaterialWorkflow:
 
@@ -95,14 +104,31 @@ class MaterialWorkflow:
         val_resp = await self.validator.arun(json.dumps(onboarding_data))
         alerts: list[str] = val_resp.content.alerts if val_resp.content else []
 
-        crm, closing, qual = await asyncio.gather(
-            self.crm_agent.arun(json.dumps(crm_context(onboarding_data))),
+        funis: list[str] = onboarding_data.get('funis') or []
+        if not funis:
+            funis = ['default']
+
+        crm_tasks = [
+            self.crm_agent.arun(json.dumps(crm_context(onboarding_data, funil_key=k)))
+            for k in funis
+        ]
+
+        crm_results, closing, qual = await asyncio.gather(
+            asyncio.gather(*crm_tasks),
             self.closing_agent.arun(json.dumps(closing_context(onboarding_data))),
             self.qual_agent.arun(json.dumps(qual_context(onboarding_data)))
         )
+        funnels = []
+        for key, resp in zip(funis, crm_results):
+            stages = resp.content.funnels[0].stages if resp.content.funnels else []
+            funnels.append(CRMFunnel(
+                key=key,
+                name=FUNIL_LABELS.get(key, 'Pipeline'),
+                stages=stages
+            ))
 
         return GeneratedMaterialResult(
-            crm=crm.content,
+            crm=CRMScript(funnels=funnels),
             closing=closing.content,
             qualification=qual.content,
             quality_alerts=alerts

@@ -228,11 +228,42 @@ O CRM é operado no dia a dia do Pipedrive. Adapte a linguagem das instruções 
 9. Português brasileiro correto com todos os acentos e pontuação.
 10. Tom feminino ou masculino conforme o nome do SDR informado.
 
+=== ENTRADA DO AGENTE ===
+
+Você recebe UM ÚNICO funil por execução. O JSON de entrada contém:
+- Campos de negócio/lead (nome_empresa, nicho, produto, perfil_lead, dor_principal, etc.)
+- Um objeto `funil` com a estrutura:
+  {
+    "key": "trafego" | "prospeccao" | "social" | "carteira" | "posvenda" | "custom" | "default",
+    "name": "Tráfego Pago" | "Prospecção Ativa" | ...,
+    "etapas": [...],          // etapas pré-configuradas pelo usuário (use como guia)
+    + campos específicos do funil (isca, plataforma, perfil, canais, frequência, etc.)
+  }
+
+Você gera APENAS este funil. Não tente inventar outros funis.
+
 === INSTRUÇÃO DE OUTPUT ===
 
-Retorne APENAS JSON válido conforme o schema CRMScript.
-Gere TODAS as etapas do funil informado em funis[] com cadência completa.
-Cada etapa deve ter os 5 itens obrigatórios.
+Retorne APENAS JSON válido conforme o schema CRMScript com EXATAMENTE 1 item em `funnels`:
+
+{
+  "funnels": [
+    {
+      "key": "<copie de funil.key>",
+      "name": "<copie de funil.name>",
+      "stages": [
+        { ... 5 itens obrigatórios por etapa ... }
+      ]
+    }
+  ]
+}
+
+Regras:
+- `funnels` SEMPRE com exatamente 1 item (o funil recebido em `funil`).
+- `key` e `name` devem espelhar exatamente o que veio em `funil.key` / `funil.name`.
+- `stages` deve cobrir TODAS as etapas do funil com cadência completa.
+- Cada etapa em `stages` deve ter os 5 itens obrigatórios (nome, objetivo, instruções, cadência, critério de avanço).
+- Se `funil.etapas` foi fornecido pelo usuário, use os nomes de etapa como base (não invente nomes diferentes).
 """
 
 

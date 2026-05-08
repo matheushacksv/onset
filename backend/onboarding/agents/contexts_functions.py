@@ -1,21 +1,68 @@
 from onboarding.models import OnboardingForm
 
-def crm_context(data: dict) -> dict:
-    """Campos para o agente de CRM: funis, time, cadência, nicho."""
-    keys = [
+FUNIL_LABELS = {
+    'trafego': 'Tráfego Pago',
+    'prospeccao': 'Prospecção Ativa',
+    'social': 'Social Selling',
+    'carteira': 'Carteira / Reativação',
+    'posvenda': 'Pós-venda / Indicação',
+    'custom': 'Funil Customizado',
+    'default': 'Pipeline',
+}
+
+def crm_context(data: dict, funil_key: str = 'default') -> dict:
+    """Campos para o agente de CRM: 1 funil específico + contexto de negócio/lead."""
+    base_keys = [
         'nome_empresa', 'nicho', 'produto', 'tipo_venda', 'ticket', 'modelo_venda', 'como_vende',
         'sdr', 'closer', 'especialista', 'perfil_operador',
-        'funis',
-        'trafego_etapas', 'trafego_isca', 'trafego_plataforma', 'trafego_dias', 'trafego_bot',
-        'prosp_etapas', 'prosp_perfil', 'prosp_dias', 'prosp_canais', 'prosp_fonte',
-        'social_etapas', 'social_plat', 'social_dias',
-        'carteira_etapas', 'carteira_quem', 'cart_freq',
-        'posvenda_etapas', 'posvenda_obs',
-        'custom_etapas', 'custom_fluxo',
         'perfil_lead', 'dor_principal', 'tom',
         'gatilho_urgencia', 'caso_sucesso',
     ]
-    return {k: data[k] for k in keys if k in data}
+    base = {k: data[k] for k in base_keys if k in data}
+
+    funil_specific = {
+        'trafego': {
+            'isca': data.get('trafego_isca'),
+            'plataforma': data.get('trafego_plataforma'),
+            'dias': data.get('trafego_dias'),
+            'bot': data.get('trafego_bot'),
+            'etapas': data.get('trafego_etapas'),
+        },
+        'prospeccao': {
+            'perfil': data.get('prosp_perfil'),
+            'dias': data.get('prosp_dias'),
+            'canais': data.get('prosp_canais'),
+            'fonte': data.get('prosp_fonte'),
+            'etapas': data.get('prosp_etapas'),
+        },
+        'social': {
+            'plataforma': data.get('social_plat'),
+            'dias': data.get('social_dias'),
+            'etapas': data.get('social_etapas'),
+        },
+        'carteira': {
+            'quem': data.get('carteira_quem'),
+            'frequencia': data.get('cart_freq'),
+            'etapas': data.get('carteira_etapas'),
+        },
+        'posvenda': {
+            'observacoes': data.get('posvenda_obs'),
+            'etapas': data.get('posvenda_etapas'),
+        },
+        'custom': {
+            'fluxo': data.get('custom_fluxo'),
+            'etapas': data.get('custom_etapas'),
+        },
+    }.get(funil_key, {})
+
+    return {
+        **base,
+        'funil': {
+            'key': funil_key,
+            'name': FUNIL_LABELS.get(funil_key, 'Pipeline'),
+            **funil_specific,
+        },
+    }
 
 def closing_context(data: dict) -> dict:
      """Campos para o agente de fechamento: closer, objeções, método, gatilhos."""
