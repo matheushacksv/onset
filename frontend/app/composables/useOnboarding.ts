@@ -2,7 +2,8 @@
 export interface CadenceAction { channel: string; message: string; instructions?: string }
 export interface CadenceDay { day: number; actions: CadenceAction[] }
 export interface PipelineStage { name: string; objective: string; dev_instructions: string; cadence: CadenceDay[]; advance_criteria: string; loss_reason?: string }
-export interface CRMScript { stages: PipelineStage[] }
+export interface CRMFunnel { key: string; name: string; stages: PipelineStage[] }
+export interface CRMScript { funnels: CRMFunnel[] }
 export interface ObjectionRow { objection: string; hidden_concern: string; counter_script: string }
 export interface ClosingMaterial { diagnostic_questions: string[]; price_presentation: string; objection_matrix: ObjectionRow[]; closing_script: string; special_condition?: string }
 export interface QualStep { type: string; content: string; channel?: string }
@@ -17,6 +18,16 @@ export interface MaterialOut {
   error: string
   created_at: string
 }
+
+export interface MaterialLibraryItem {
+  id: number
+  pipedrive_deal_name: string
+  assessor_name: string | null
+  updated_at: string
+}
+
+export const cleanDealName = (name: string) =>
+  (name || '').replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim()
 
 export interface FunilEtapa {
   name: string
@@ -256,6 +267,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
   const loading = ref(false)
   const status = ref<'draft' | 'complete' | 'synced'>('draft')
   const dealName = ref('')
+  const assessorName = ref('')
 
   // ── Materials ────────────────────────────────────────────────
   const materials = ref<MaterialOut | null>(null)
@@ -291,6 +303,21 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     }
   }
 
+  const createManualMaterial = async () => {
+    const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials/manual`, { method: 'POST' })
+    materials.value = data
+  }
+
+  const copyMaterialFrom = async (sourceId: number) => {
+    const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials/copy-from/${sourceId}`, { method: 'POST' })
+    materials.value = data
+  }
+
+  const loadMaterialLibrary = async () => {
+    const items = await fetchAuth<MaterialLibraryItem[]>('/api/onboarding/materials/library')
+    return items.map(it => ({ ...it, pipedrive_deal_name: cleanDealName(it.pipedrive_deal_name) }))
+  }
+
   const saveMaterials = async (patch: Partial<Pick<MaterialOut, 'crm' | 'closing' | 'qualification'>>) => {
     const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials`, {
       method: 'PATCH',
@@ -318,7 +345,8 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
       }
       form.value = { ...defaults, ...formData }
       status.value = data.status as 'draft' | 'complete' | 'synced'
-      dealName.value = data.pipedrive_deal_name
+      dealName.value = cleanDealName(data.pipedrive_deal_name)
+      assessorName.value = data.assessor_name || ''
     } catch {
       // novo formulário ainda não tem dados
     } finally {
@@ -398,10 +426,11 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
   }
 
   return {
-    form, step, saving, submitting, loading, status, dealName,
+    form, step, saving, submitting, loading, status, dealName, assessorName,
     load, saveStep, nextStep, prevStep, submit,
     toggleChip, selectOne, toggleFunil, selectPlano, addEtapa, addBonus,
     PLANOS,
     materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
+    createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
   }
 }

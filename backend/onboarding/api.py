@@ -1,7 +1,7 @@
 from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
-from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn
+from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut
 from .agents.schemas import MaterialOut, MaterialPatchIn
 from .pipedrive_services import list_deals, update_deal, create_note
 from core.errors import Error
@@ -11,7 +11,7 @@ from .models import GeneratedMaterial
 router = Router(tags=['Onboarding'])
 
 def _is_desenvolvedor(user) -> bool:
-    return user.groups.filter(name='Desenvolvedor').exists()
+    return user.groups.filter(name='Desenvolvedor').exists() and not user.is_superuser
 
 def _build_note(o: OnboardingForm) -> str:
     def v(value) -> str:
@@ -291,3 +291,58 @@ def update_materials(request, id: int, data: MaterialPatchIn):
         setattr(material, field, value)
     material.save()
     return Status(200, material)
+
+
+#* ---- Manual Material ----
+
+@router.post('/{onboarding_id}/materials/manual', response={201: MaterialOut, 400: Error})
+def create_manual_material(request, onboarding_id: int):
+    onboarding = get_object_or_404(OnboardingForm, id=onboarding_id, assessor=request.auth)
+
+    if hasattr(onboarding, 'material'):
+        return Status(400, Error(detail='Material já existe'))
+    
+    material = GeneratedMaterial.objects.create(
+        onboarding=onboarding,
+        status=GeneratedMaterial.Status.COMPLETE,
+        crm={'funnels': []},
+        closing={
+            'diagnostic_questions': [],
+            'price_presentation': '',
+            'objection_matrix': [],
+            'closing_script': ''
+        },
+        qualification={
+            'profile': 'b2b',
+            'whatsapp_flow': [],
+            'call_pitch': '',
+            'advance_criteria': [],
+            'disqualification_criteria': []
+        }
+    )
+    return Status(201, material)
+
+@router.post('/{onboarding_id}/materials/copy-from/{source_id}', response={201: MaterialOut, 400: Error, 401: Error})
+def copy_material(request, onboarding_id: int, source_id: int):
+    onboarding_target = get_object_or_404(OnboardingForm, id=onboarding_id, assessor=request.auth)
+    onboarding_source = get_object_or_404(OnboardingForm, id=source_id)
+
+    if hasattr(onboarding_target, 'material'):
+        return Status(400, Error(detail='Material já existe'))
+    
+    if not hasattr(onboarding_source, 'material') or onboarding_source.material.status != GeneratedMaterial.Status.COMPLETE:
+        return Status(401, Error(detail='Onboarding de origem não existe material completo'))
+    
+    source_material = onboarding_source.material
+    material = GeneratedMaterial.objects.create(
+        onboarding=onboarding_target,
+        status=GeneratedMaterial.Status.COMPLETE,
+        crm=source_material.crm, closing=source_material.closing, qualification=source_material.qualification
+    )
+    return Status(201, material)
+
+@router.get('/materials/library', response=list[MaterialLibraryItemOut])
+def list_materials(request):
+    return OnboardingForm.objects.filter(
+        material__status=GeneratedMaterial.Status.COMPLETE
+    ).select_related('assessor').order_by('-updated_at')

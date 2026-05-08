@@ -4,6 +4,8 @@ interface User {
   email: string
   avatar: string | null
   is_superuser: boolean
+  is_staff: boolean
+  is_active: boolean
   roles: string[]
 }
 

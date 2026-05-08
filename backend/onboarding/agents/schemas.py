@@ -20,8 +20,13 @@ class PipelineStage(Schema):
     advance_criteria: str
     loss_reason: Optional[str] = None
 
+class CRMFunnel(Schema):
+    key: str
+    name: str
+    stages: list[PipelineStage] = []
+
 class CRMScript(Schema):
-    stages: list[PipelineStage]
+    funnels: list[CRMFunnel] = []
 
 #* Fechamento
 class ObjectionRow(Schema):
@@ -30,10 +35,10 @@ class ObjectionRow(Schema):
     counter_script: str
 
 class ClosingMaterial(Schema):
-    diagnostic_questions: list[str]
-    price_presentation: str
-    objection_matrix: list[ObjectionRow]
-    closing_script: str
+    diagnostic_questions: list[str] = []
+    price_presentation: str = ''
+    objection_matrix: list[ObjectionRow] = []
+    closing_script: str = ''
     special_condition: Optional[str] = None
 
 #* Qualificação
@@ -43,11 +48,11 @@ class QualStep(Schema):
     channel: Optional[Literal['whatsapp', 'audio']] = None
 
 class QualificationScript(Schema):
-    profile: Literal['b2b','b2c']
-    whatsapp_flow: list[QualStep]
-    call_pitch: str
-    advance_criteria: list[str]
-    disqualification_criteria: list[str]
+    profile: Literal['b2b','b2c'] = ''
+    whatsapp_flow: list[QualStep] = []
+    call_pitch: str = ''
+    advance_criteria: list[str] = []
+    disqualification_criteria: list[str] = []
 
 class QualityAlerts(Schema):
     alerts: list[str] = []
