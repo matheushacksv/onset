@@ -17,6 +17,8 @@ export interface MaterialOut {
   quality_alerts: string[]
   error: string
   created_at: string
+  published: boolean
+  published_at: string | null
 }
 
 export interface MaterialLibraryItem {
@@ -24,6 +26,8 @@ export interface MaterialLibraryItem {
   pipedrive_deal_name: string
   assessor_name: string | null
   updated_at: string
+  published?: boolean
+  published_at?: string | null
 }
 
 export const cleanDealName = (name: string) =>
@@ -327,6 +331,12 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     } catch { /* fire-and-forget */ }
   }
 
+  const publishMaterial = async () => {
+    const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials/publish`, { method: 'POST' })
+    materials.value = data
+    return data
+  }
+
   const saveMaterials = async (patch: Partial<Pick<MaterialOut, 'crm' | 'closing' | 'qualification'>>) => {
     const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials`, {
       method: 'PATCH',
@@ -441,6 +451,6 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     PLANOS,
     materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
     createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
-    prepareAssistant,
+    prepareAssistant, publishMaterial,
   }
 }
