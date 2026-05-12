@@ -1,13 +1,14 @@
 from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
-from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut
+from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut
 from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
 from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
 from core.errors import Error
 from django.shortcuts import get_object_or_404
 from .models import GeneratedMaterial
+from django.utils import timezone
 
 router = Router(tags=['Onboarding'])
 
@@ -181,6 +182,31 @@ def _build_note(o: OnboardingForm) -> str:
     ]
 
     return '\n'.join(lines)
+
+
+@router.get('/dev/materials', response={200: list[MaterialLibraryItemOut], 403: Error})
+def list_materials_to_dev(request):
+    if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
+        return Status(403, Error(detail='Não autorizado'))
+    return (
+        OnboardingForm.objects
+        .filter(material__status=GeneratedMaterial.Status.COMPLETE, material__published=True)
+        .select_related('assessor', 'material')
+        .order_by('-material__published_at')
+    )
+
+
+@router.get('/dev/materials/{onboarding_id}', response={200: DevMaterialDetailOut, 403: Error, 404: Error})
+def get_materials_to_dev(request, onboarding_id: int):
+    if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
+        return Status(403, Error(detail='Não autorizado'))
+    return get_object_or_404(
+        OnboardingForm.objects.select_related('assessor', 'material'),
+        id=onboarding_id,
+        material__status=GeneratedMaterial.Status.COMPLETE,
+        material__published=True,
+    )
+
 
 @router.get('/deals/', response={200: list[DealOut], 400: Error})
 def list_onboarding_deals(request):
@@ -394,3 +420,21 @@ def list_materials(request):
     return OnboardingForm.objects.filter(
         material__status=GeneratedMaterial.Status.COMPLETE
     ).select_related('assessor').order_by('-updated_at')
+
+@router.post('/{onboarding_id}/materials/publish', response={200: MaterialOut, 400: Error, 403: Error, 404: Error})
+def publish_material(request, onboarding_id: int):
+    qs = OnboardingForm.objects.select_related('material')
+    if not request.auth.is_superuser:
+        qs = qs.filter(assessor=request.auth)
+    onboarding = get_object_or_404(qs, id=onboarding_id)
+    material = getattr(onboarding, 'material', None)
+    if material is None or material.status != GeneratedMaterial.Status.COMPLETE:
+        return Status(400, Error(detail='Material indisponível'))
+
+    material.published = not material.published
+    material.published_at = timezone.now() if material.published else None
+    material.save(update_fields=['published', 'published_at', 'updated_at'])
+
+    return Status(200, material)
+
+

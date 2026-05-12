@@ -73,6 +73,8 @@ class MaterialOut(Schema):
     quality_alerts: list[str] = []
     error: str = ''
     created_at: datetime
+    published: bool = False
+    published_at: Optional[datetime] = None
 
 class MaterialPatchIn(Schema):
     crm: Optional[CRMScript] = None

@@ -47,6 +47,21 @@
             Onboarding
           </span>
         </NuxtLink>
+
+        <!-- Materiais Dev (Desenvolvedor only) -->
+        <NuxtLink
+          v-if="hasRole('Desenvolvedor')"
+          to="/dev/materiais"
+          class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors"
+          :class="$route.path.startsWith('/dev/materiais') ? 'bg-black/10 dark:bg-white/10 text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/70'"
+        >
+          <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Materiais
+          </span>
+        </NuxtLink>
       </nav>
 
       <!-- Bottom: theme toggle + avatar -->

@@ -142,6 +142,8 @@ class GeneratedMaterial(models.Model):
     qualification = models.JSONField(null=True, blank=True)
     quality_alerts = models.JSONField(default=list)
     error = models.TextField(blank=True)
+    published = models.BooleanField(default=False)
+    published_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -65,6 +65,22 @@
           >
             {{ materialsGenerating ? 'Gerando...' : 'Regenerar' }}
           </button>
+          <button
+            v-if="!isDesenvolvedor && materials?.status === 'complete'"
+            class="px-3 py-1.5 text-sm rounded-lg transition-all disabled:opacity-40"
+            :class="materials?.published
+              ? 'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/15'
+              : 'bg-white text-neutral-900 hover:bg-white/90'"
+            :disabled="publishing"
+            @click="handlePublish"
+          >
+            <span v-if="publishing">...</span>
+            <span v-else-if="materials?.published" class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              Publicado
+            </span>
+            <span v-else>Publicar</span>
+          </button>
         </div>
       </div>
     </div>
@@ -536,8 +552,16 @@ const id = route.params.id as string
 const {
   materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
   createManualMaterial, copyMaterialFrom, loadMaterialLibrary, prepareAssistant,
-  dealName, assessorName, load, form,
+  publishMaterial, dealName, assessorName, load, form,
 } = useOnboarding(id)
+
+const publishing = ref(false)
+const handlePublish = async () => {
+  if (publishing.value) return
+  if (materials.value?.published && !confirm('Despublicar este material? Devs não conseguirão mais visualizá-lo.')) return
+  publishing.value = true
+  try { await publishMaterial() } finally { publishing.value = false }
+}
 
 const { user } = useAuth()
 const isDesenvolvedor = computed(() => user.value?.roles?.includes('Desenvolvedor') && !user.value?.is_superuser)

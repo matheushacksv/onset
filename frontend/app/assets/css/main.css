@@ -46,3 +46,7 @@ html:not(.dark) .border-white\/20 { border-color: rgb(0 0 0 / 0.15); }
 
 /* --- placeholder --- */
 html:not(.dark) .placeholder-white\/20::placeholder { color: rgb(10 10 10 / 0.30); }
+
+/* --- scrollbar utility --- */
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }

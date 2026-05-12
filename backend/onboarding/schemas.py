@@ -226,14 +226,44 @@ class OnboardingOut(Schema):
             return None
 
 
+class DevMaterialDetailOut(Schema):
+    id: int
+    pipedrive_deal_name: str
+    assessor_name: Optional[str] = None
+    updated_at: datetime
+    crm: Optional[dict] = None
+
+    @staticmethod
+    def resolve_assessor_name(obj):
+        return (obj.assessor.name or obj.assessor.email) if obj.assessor else None
+
+    @staticmethod
+    def resolve_updated_at(obj):
+        return obj.material.updated_at if hasattr(obj, 'material') and obj.material else obj.updated_at
+
+    @staticmethod
+    def resolve_crm(obj):
+        return obj.material.crm if hasattr(obj, 'material') and obj.material else None
+
+
 class MaterialLibraryItemOut(Schema):
     id: int
     pipedrive_deal_name: str
     assessor_name: Optional[str] = None
     updated_at: datetime
+    published: bool = False
+    published_at: Optional[datetime] = None
 
     @staticmethod
     def resolve_assessor_name(obj):
         return obj.assessor.name if obj.assessor else None
+
+    @staticmethod
+    def resolve_published(obj):
+        return bool(obj.material.published) if hasattr(obj, 'material') and obj.material else False
+
+    @staticmethod
+    def resolve_published_at(obj):
+        return obj.material.published_at if hasattr(obj, 'material') and obj.material else None
     
 
