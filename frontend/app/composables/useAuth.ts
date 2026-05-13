@@ -6,7 +6,7 @@ interface User {
   is_superuser: boolean
   is_staff: boolean
   is_active: boolean
-  roles: string[]
+  role: string[]
 }
 
 export const useAuth = () => {
@@ -75,7 +75,7 @@ export const useAuth = () => {
     }
   }
 
-  const hasRole = (role: string) => user.value?.is_superuser || user.value?.roles?.includes(role) || false
+  const hasRole = (role: string) => user.value?.is_superuser || user.value?.role?.includes(role) || false
 
   const isLoggedIn = computed(() => !!accessToken.value)
 

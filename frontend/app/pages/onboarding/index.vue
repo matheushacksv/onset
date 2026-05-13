@@ -166,7 +166,7 @@
 const { hasRole, user, fetchAuth } = useAuth()
 if (!hasRole('Assessor') && !hasRole('Desenvolvedor')) await navigateTo('/')
 
-const isDesenvolvedor = computed(() => user.value?.roles?.includes('Desenvolvedor') && !user.value?.is_superuser)
+const isDesenvolvedor = computed(() => user.value?.role?.includes('Desenvolvedor') && !user.value?.is_superuser)
 
 import { cleanDealName } from '~/composables/useOnboarding'
 

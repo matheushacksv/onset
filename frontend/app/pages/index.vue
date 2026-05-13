@@ -19,7 +19,7 @@ interface OnboardingItem {
 const { user, fetchAuth, hasRole } = useAuth()
 const router = useRouter()
 
-const isDesenvolvedor = computed(() => user.value?.roles?.includes('Desenvolvedor') && !user.value?.is_superuser)
+const isDesenvolvedor = computed(() => user.value?.role?.includes('Desenvolvedor') && !user.value?.is_superuser)
 
 const greeting = computed(() => {
   const h = new Date().getHours()

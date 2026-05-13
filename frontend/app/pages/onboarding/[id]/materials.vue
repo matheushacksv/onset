@@ -564,7 +564,7 @@ const handlePublish = async () => {
 }
 
 const { user } = useAuth()
-const isDesenvolvedor = computed(() => user.value?.roles?.includes('Desenvolvedor') && !user.value?.is_superuser)
+const isDesenvolvedor = computed(() => user.value?.role?.includes('Desenvolvedor') && !user.value?.is_superuser)
 
 const activeTab = ref<'crm' | 'fechamento' | 'qualificacao'>('crm')
 const activeFunnel = ref(0)
