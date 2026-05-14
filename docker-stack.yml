@@ -21,7 +21,7 @@ services:
       - internal
 
   backend:
-    image: app-backend
+    image: ghcr.io/matheushacksv/onset-backend:latest
     env_file:
       - ./.env
     networks:
@@ -36,7 +36,7 @@ services:
         - "traefik.http.services.onset-api.loadbalancer.server.port=8000"
 
   worker:
-    image: app-worker
+    image: ghcr.io/matheushacksv/onset-backend:latest
     command: uv run python manage.py qcluster
     env_file:
       - ./.env
@@ -44,7 +44,7 @@ services:
       - internal
 
   frontend:
-    image: app-frontend
+    image: ghcr.io/matheushacksv/onset-frontend:latest
     environment:
       NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
       NUXT_INTERNAL_BACKEND_URL: http://backend:8000
