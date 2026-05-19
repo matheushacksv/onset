@@ -1,14 +1,23 @@
 from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
-from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut
+from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn
 from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
 from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
 from core.errors import Error
 from django.shortcuts import get_object_or_404
-from .models import GeneratedMaterial
+from .models import GeneratedMaterial, MaterialShare
 from django.utils import timezone
+from django.http import HttpResponse
+from django.utils.text import slugify
+from .pdf.renderer import render_material_pdf
+import secrets
+import copy
+from datetime import timedelta
+from django.contrib.auth.hashers import make_password, check_password
+from django.core import signing
+from django.db.models import F
 
 router = Router(tags=['Onboarding'])
 
@@ -319,6 +328,26 @@ def update_materials(request, id: int, data: MaterialPatchIn):
     material.save()
     return Status(200, material)
 
+@router.get('/{onboarding_id}/materials/pdf', response={200: None, 400: Error})
+def download_master_pdf(request, onboarding_id: int):
+    return _serve_pdf(request, onboarding_id, 'master')
+
+@router.get('/{onboarding_id}/materials/pdf/{kind}', response={200: None, 400: Error, 404: Error})
+def download_section_pdf(request, onboarding_id: int, kind: str):
+    if kind not in {'crm', 'closing', 'qualification'}:
+        return Status(400, Error(detail='kind inválido'))
+    return _serve_pdf(request, onboarding_id, kind)
+
+def _serve_pdf(request, onboarding_id: int, kind):
+    material = get_object_or_404(GeneratedMaterial, onboarding_id=onboarding_id)
+    if material.status != 'complete':
+        return Status(400, Error(detail='Material ainda não está pronto'))
+    pdf_bytes = render_material_pdf(material, kind)
+    deal_slug = slugify(material.onboarding.pipedrive_deal_name) or 'material'
+    resp = HttpResponse(pdf_bytes, content_type='application/pdf')
+    resp['Content-Disposition'] = f'attachment; filename="{deal_slug}-{kind}.pdf"'
+    return resp
+
 
 #* ---- Manual Material ----
 
@@ -437,4 +466,133 @@ def publish_material(request, onboarding_id: int):
 
     return Status(200, material)
 
+#* ---- Share Material ----
 
+def _strip_internal(crm):
+    '''Remove campos internos do CRM'''
+    if not crm:
+        return crm
+    crm = copy.deepcopy(crm)
+    for funnel in crm.get('funnels', []):
+        for stage in funnel.get('stages', []):
+            stage.pop('dev_instructions', None)
+    return crm
+
+def _shared_payload(material):
+    o = material.onboarding
+    return {
+        'deal_name': o.pipedrive_deal_name,
+        'assessor_name': (o.assessor.name or o.assessor.email) if o.assessor else None,
+        'generated_at': material.created_at,
+        'crm': _strip_internal(material.crm),
+        'closing': material.closing,
+        'qualification': material.qualification
+    }
+
+def _resolve_expiry(data: ShareCreateIn):
+    if data.expires_at:
+        return data.expires_at
+    if data.expires_in_days:
+        return timezone.now() + timedelta(days=data.expires_in_days)
+    return None
+
+def _get_owned_material(request, onboarding_id: int):
+    qs = OnboardingForm.objects.select_related('material')
+    if not request.auth.is_superuser:
+        qs = qs.filter(assessor=request.auth)
+    onboarding = get_object_or_404(qs, id=onboarding_id)
+    return getattr(onboarding, 'material', None)
+
+@router.post('/{onboarding_id}/materials/share', response={200: ShareOut, 400: Error, 403: Error, 404: Error})
+def create_share(request, onboarding_id: int, data: ShareCreateIn):
+    if _is_desenvolvedor(request.auth):
+        return Status(403, Error(detail='Acesso negado'))
+    material = _get_owned_material(request, onboarding_id)
+    if material is None or material.status != GeneratedMaterial.Status.COMPLETE:
+        return Status(400, Error(detail='Material indisponível'))
+    
+    share, _ = MaterialShare.objects.update_or_create(
+        material=material,
+        defaults={
+            'token': secrets.token_urlsafe(32),
+            'password_hash': make_password(data.password) if data.password else '',
+            'expires_at': _resolve_expiry(data),
+            'revoked': False,
+            'view_count': 0,
+            'last_viewed_at': None,
+            'created_by': request.auth
+        }
+    )
+    return Status(200, share)
+
+@router.get('/{onboarding_id}/materials/share', response={200: ShareOut, 404: Error})
+def get_share(request, onboarding_id: int):
+    material = _get_owned_material(request, onboarding_id)
+    share = getattr(material, 'share', None) if material else None
+    if share is None:
+        return Status(404, Error(detail='Sem link de compartilhamento'))
+    return Status(200, share)
+
+@router.delete('/{onboarding_id}/materials/share', response={204: None, 403: Error, 404: Error})
+def revoke_share(request, onboarding_id: int):
+    if _is_desenvolvedor(request.auth):
+        return Status(403, Error(detail='Acesso negado'))
+    material = _get_owned_material(request, onboarding_id)
+    share = getattr(material, 'share', None) if material else None
+    if share is None:
+        return Status(404, Error(detail='Sem link de compartilhamento'))
+    share.revoked = True
+    share.save(update_fields=['revoked', 'updated_at'])
+    return Status(204, None)
+
+#* ---- Share público (auth=None) ----
+
+@router.get('/share/{token}', auth=None, response={200: SharedMaterialOut, 401: SharedGateOut, 404: Error, 410: Error})
+def view_shared(request, token: str):
+    share = get_object_or_404(MaterialShare.objects.select_related('material__onboarding__assessor'), token=token)
+    if not share.is_active:
+        return Status(410, Error(detail='Link indisponivel'))
+    if share.password_hash:
+        return Status(401, SharedGateOut(deal_name=share.material.onboarding.pipedrive_deal_name))
+    MaterialShare.objects.filter(pk=share.pk).update(
+        view_count=F('view_count') + 1, last_viewed_at=timezone.now()
+    )
+    payload = _shared_payload(share.material)
+    payload['grant'] = signing.dumps(token, salt='share-pdf')
+    return Status(200, payload)
+
+@router.post('/share/{token}/unlock', auth=None, response={200: SharedMaterialOut, 401: SharedGateOut, 404: Error, 410: Error})
+def unlock_shared(request, token: str, data: ShareUnlockIn):
+    share = get_object_or_404(MaterialShare.objects.select_related('material__onboarding__assessor'), token=token)
+    if not share.is_active:
+        return Status(410, Error(detail='Link indisponivel'))
+    if not share.password_hash or not check_password(data.password, share.password_hash):
+        return Status(403, Error(detail='Senha incorreta'))
+    MaterialShare.objects.filter(pk=share.pk).update(
+        view_count=F('view_count') + 1, last_viewed_at=timezone.now()
+    )
+    payload = _shared_payload(share.material)
+    payload['grant'] = signing.dumps(token, salt='share-pdf')
+    return Status(200, payload)
+
+@router.get('/share/{token}/token/{kind}', auth=None, response={200: None, 400: Error, 403: Error, 404: Error, 410: Error})
+def shared_pdf(request, token: str, kind: str, grant: str = None):
+    if kind not in {'master', 'crm', 'closing', 'qualification'}:
+        return Status(400, Error(detail='kind inválido'))
+    share = get_object_or_404(MaterialShare, token=token)
+    if not share.is_active:
+        return Status(410, Error(detail='Link indisponivel'))
+    if share.password_hash:
+        try:
+            if signing.loads(grant or '', salt='share-pdf', max_age=86400) != token:
+                raise signing.BadSignature()
+        except (signing.BadSignature, signing.SignatureExpired):
+            return Status(403, Error(detail='Acesso negado'))
+    material = share.material
+    if material.status != GeneratedMaterial.Status.COMPLETE:
+        return Status(400, Error(detail='Material ainda não está pronto'))
+    pdf_bytes = render_material_pdf(material, kind, public=True)
+    deal_slug = slugify(material.onboarding.pipedrive_deal_name) or 'material'
+    resp = HttpResponse(pdf_bytes, content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="{deal_slug}--{kind}.pdf"'
+    return resp

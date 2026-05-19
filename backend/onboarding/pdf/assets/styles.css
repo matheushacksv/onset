@@ -1,0 +1,705 @@
+/* ============================================================
+   Onset — PDF Design System  ·  Editorial warm
+   WeasyPrint target. Inter embarcada local.
+   ============================================================ */
+
+@font-face {
+  font-family: 'Inter';
+  src: url('inter/Inter-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('inter/Inter-Medium.ttf') format('truetype');
+  font-weight: 500; font-style: normal;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('inter/Inter-SemiBold.ttf') format('truetype');
+  font-weight: 600; font-style: normal;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('inter/Inter-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal;
+}
+
+/* ============================================================
+   Tokens
+   ============================================================ */
+:root {
+  --bg:        #f3ede0;
+  --surface:   #ffffff;
+  --s2:        #f9f5ef;
+  --border:    #e2d8c5;
+  --bl:        #ede8dc;
+
+  --text:      #1c1917;
+  --dim:       #5a5048;
+  --muted:     #9a9088;
+
+  --accent:    #4d7c58;
+  --accent2:   #3a6a4a;
+  --accent-d:  #2c3f31;
+
+  --green-bg:  #edf7f1;
+  --amber:     #a06010;  --amber-bg:#fef3e2;  --amber-b:#e8c070;
+  --red:       #b83030;  --red-bg:  #fef0f0;  --red-b:  #f0b0b0;
+  --blue-bg:   #edf3fc;  --blue-b:  #90b8f0;
+}
+
+/* ============================================================
+   Page setup
+   ============================================================ */
+@page {
+  size: A4;
+  margin: 22mm 20mm 18mm;
+  background: var(--bg);
+
+  @bottom-left {
+    content: string(deal-name);
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5pt;
+    color: #b6ab98;
+    letter-spacing: 0.05em;
+  }
+  @bottom-center {
+    content: "Grupo Enriquecedor";
+    font-family: 'Inter', sans-serif;
+    font-size: 7pt;
+    font-weight: 600;
+    color: #c4baa6;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5pt;
+    color: #b6ab98;
+    letter-spacing: 0.07em;
+  }
+  @top-right {
+    content: string(section-label);
+    font-family: 'Inter', sans-serif;
+    font-size: 6.5pt;
+    color: #c4baa6;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+  }
+}
+
+@page :first {
+  margin: 0;
+  background: var(--accent-d);
+  @bottom-left { content: none; }
+  @bottom-center { content: none; }
+  @bottom-right { content: none; }
+  @top-right { content: none; }
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+html, body {
+  margin: 0; padding: 0;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-size: 10pt;
+  line-height: 1.62;
+  -weasy-hyphens: none;
+}
+* { box-sizing: border-box; }
+
+.deal-name-anchor { string-set: deal-name content(); }
+.section-label-anchor { string-set: section-label content(); }
+
+h1, h2, h3, h4 { color: var(--text); margin: 0; font-weight: 600; }
+p { margin: 0; }
+
+/* ============================================================
+   COVER  —  hero verde profundo
+   ============================================================ */
+.cover {
+  page-break-after: always;
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  background: var(--accent-d);
+  background-image:
+    radial-gradient(ellipse 75% 45% at 50% -8%, rgba(255,255,255,0.07) 0%, transparent 62%),
+    radial-gradient(ellipse 70% 45% at 50% 112%, rgba(0,0,0,0.30) 0%, transparent 60%);
+  color: var(--bg);
+  padding: 26mm 24mm;
+}
+.cover::after {
+  content: "";
+  position: absolute;
+  left: 12mm; right: 12mm; top: 12mm; bottom: 12mm;
+  border: 1px solid rgba(243,237,224,0.16);
+  pointer-events: none;
+}
+
+.cover-logo {
+  height: 13mm;
+  width: auto;
+  display: block;
+  opacity: 0.96;
+}
+
+.cover-main {
+  position: absolute;
+  left: 24mm; right: 24mm;
+  bottom: 78mm;
+}
+
+.cover-eyebrow {
+  font-size: 8pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  color: rgba(243,237,224,0.55);
+  margin-bottom: 9mm;
+}
+
+.cover-title {
+  font-size: 40pt;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--bg);
+  margin: 0;
+  max-width: 155mm;
+}
+
+.cover-subtitle {
+  font-size: 11.5pt;
+  font-weight: 400;
+  color: rgba(243,237,224,0.62);
+  line-height: 1.55;
+  margin: 7mm 0 0;
+  max-width: 132mm;
+}
+
+.cover-footer {
+  position: absolute;
+  left: 24mm; right: 24mm;
+  bottom: 30mm;
+}
+.cover-footer-grid {
+  display: flex;
+  gap: 14mm;
+  padding-top: 6mm;
+  border-top: 1px solid rgba(243,237,224,0.18);
+}
+.cover-footer .col { flex: 1; }
+.cover-footer .label {
+  font-size: 6.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  color: rgba(243,237,224,0.40);
+  margin-bottom: 2.5mm;
+  display: block;
+}
+.cover-footer .value {
+  font-size: 10pt;
+  font-weight: 500;
+  color: var(--bg);
+}
+
+/* ============================================================
+   Section opener
+   ============================================================ */
+.section-opener {
+  page-break-before: always;
+  padding-top: 62mm;
+}
+.section-opener .index {
+  font-size: 66pt;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--border);
+  line-height: 1;
+  margin-bottom: 6mm;
+}
+.section-opener .eyebrow {
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.30em;
+  color: var(--accent);
+  margin-bottom: 5mm;
+}
+.section-opener .title {
+  font-size: 31pt;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: var(--text);
+  line-height: 1.06;
+}
+.section-opener .rule {
+  width: 16mm;
+  height: 2px;
+  background: var(--accent);
+  margin: 8mm 0 7mm;
+}
+.section-opener .lede {
+  font-size: 11pt;
+  color: var(--dim);
+  max-width: 128mm;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   TOC
+   ============================================================ */
+.toc {
+  page-break-before: always;
+  page-break-after: always;
+  padding-top: 18mm;
+}
+.toc-title {
+  font-size: 7.5pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.30em;
+  color: var(--accent);
+  margin-bottom: 14mm;
+}
+.toc-list { list-style: none; padding: 0; margin: 0; }
+.toc-item {
+  display: flex;
+  padding: 6mm 0;
+  border-top: 1px solid var(--border);
+}
+.toc-item:last-child { border-bottom: 1px solid var(--border); }
+.toc-item a {
+  color: var(--text);
+  text-decoration: none;
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  font-size: 15pt;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.toc-item .num {
+  font-size: 8pt;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.14em;
+  width: 14mm;
+  flex-shrink: 0;
+}
+.toc-item a::after {
+  content: target-counter(attr(href), page);
+  font-size: 10pt;
+  font-weight: 600;
+  color: var(--text);
+  margin-left: auto;
+}
+
+/* ============================================================
+   Section content — comum
+   ============================================================ */
+.section { page-break-before: always; }
+.section-content { padding-top: 2mm; }
+
+.sub-title {
+  font-size: 8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent2);
+  margin: 11mm 0 4mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+}
+.sub-title:first-child { margin-top: 0; }
+
+.label {
+  font-size: 6.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  margin: 0 0 1.5mm;
+}
+
+.body { font-size: 10pt; color: var(--dim); white-space: pre-wrap; }
+
+ol, ul { padding-left: 5mm; margin: 3mm 0 6mm; }
+li { margin-bottom: 2mm; color: var(--dim); }
+
+/* lista de diagnóstico numerada */
+ol.diagnostic { list-style: none; padding: 0; counter-reset: diag; }
+ol.diagnostic li {
+  counter-increment: diag;
+  position: relative;
+  padding: 3.6mm 0 3.6mm 12mm;
+  border-bottom: 1px solid var(--border);
+  font-size: 10pt;
+  color: var(--text);
+  margin: 0;
+  break-inside: avoid;
+}
+ol.diagnostic li:last-child { border-bottom: none; }
+ol.diagnostic li::before {
+  content: counter(diag, decimal-leading-zero);
+  position: absolute;
+  left: 0; top: 3.6mm;
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ============================================================
+   Card  —  bloco editorial tipado
+   ============================================================ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2.4mm;
+  padding: 3mm 3.4mm;
+  margin-bottom: 2.4mm;
+  break-inside: avoid;
+}
+.card:last-child { margin-bottom: 0; }
+
+.card--objetivo { border-left: 0.9mm solid var(--accent); background: var(--green-bg); }
+.card--avanco   { border-left: 0.9mm solid var(--accent2); background: var(--blue-bg); }
+.card--perda    { border-left: 0.9mm solid var(--red);    background: var(--red-bg); }
+.card--dev      { border-left: 0.9mm solid var(--amber);  background: var(--amber-bg); }
+.card--msg      { border-left: 0.9mm solid var(--accent); }
+.card--plain    { border-left: 0.9mm solid var(--border); }
+
+.clbl {
+  font-size: 6pt;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 1.6mm;
+  margin-bottom: 1.8mm;
+}
+.clbl .dot {
+  width: 1.3mm; height: 1.3mm;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.clbl--verde  { color: var(--accent); }
+.clbl--blue   { color: var(--accent2); }
+.clbl--amber  { color: var(--amber); }
+.clbl--red    { color: var(--red); }
+.clbl--muted  { color: var(--muted); }
+
+.ctxt {
+  font-size: 8.4pt;
+  line-height: 1.58;
+  color: var(--dim);
+  white-space: pre-wrap;
+}
+.card .ctxt { font-size: 8pt; }
+
+/* script box dentro de card de mensagem */
+.sbox {
+  background: var(--s2);
+  border: 1px solid var(--bl);
+  border-radius: 1.8mm;
+  padding: 2.6mm 3mm;
+  font-size: 8pt;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  margin-top: 1.6mm;
+}
+.ibox {
+  background: #fffbf0;
+  border: 1px solid var(--amber-b);
+  border-radius: 1.8mm;
+  padding: 2.2mm 3mm;
+  font-size: 7.4pt;
+  line-height: 1.55;
+  color: var(--amber);
+  font-style: italic;
+  white-space: pre-wrap;
+  margin-top: 1.6mm;
+}
+
+/* ============================================================
+   Bloco de texto destacado (preço / script de fechamento)
+   ============================================================ */
+.body-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 0.9mm solid var(--accent);
+  border-radius: 2.4mm;
+  padding: 5mm 6mm;
+  font-size: 10pt;
+  color: var(--text);
+  white-space: pre-wrap;
+  line-height: 1.62;
+  margin: 3mm 0 7mm;
+  break-inside: avoid;
+}
+
+/* ============================================================
+   Objection table
+   ============================================================ */
+.objection-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 3mm 0 7mm;
+  font-size: 9pt;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2mm;
+  overflow: hidden;
+}
+.objection-table th {
+  font-size: 6.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent2);
+  padding: 3mm 4mm;
+  text-align: left;
+  border-bottom: 2px solid var(--accent);
+}
+.objection-table td {
+  padding: 4mm;
+  border-bottom: 1px solid var(--bl);
+  vertical-align: top;
+  color: var(--dim);
+  line-height: 1.5;
+}
+.objection-table tr:last-child td { border-bottom: none; }
+.objection-table td:first-child { font-weight: 600; color: var(--text); }
+.objection-table tr { break-inside: avoid; }
+.objection-table tbody tr:nth-child(even) { background: var(--s2); }
+
+/* ============================================================
+   CRM  —  funil kanban (paisagem)
+   ============================================================ */
+@page funnel {
+  size: A4 landscape;
+  margin: 16mm 16mm 14mm;
+  background: var(--bg);
+
+  @bottom-left {
+    content: string(deal-name);
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5pt; color: #b6ab98; letter-spacing: 0.05em;
+  }
+  @bottom-center {
+    content: "Grupo Enriquecedor";
+    font-family: 'Inter', sans-serif;
+    font-size: 7pt; font-weight: 600; color: #c4baa6;
+    letter-spacing: 0.22em; text-transform: uppercase;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-family: 'Inter', sans-serif;
+    font-size: 7.5pt; color: #b6ab98; letter-spacing: 0.07em;
+  }
+  @top-right {
+    content: string(section-label);
+    font-family: 'Inter', sans-serif;
+    font-size: 6.5pt; color: #c4baa6;
+    text-transform: uppercase; letter-spacing: 0.24em;
+  }
+}
+
+.funnel-block {
+  page: funnel;
+  page-break-before: always;
+}
+
+.funnel-header {
+  margin-bottom: 5mm;
+  padding-bottom: 3.5mm;
+  border-bottom: 2px solid var(--accent);
+}
+.funnel-eyebrow {
+  font-size: 6.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  margin-bottom: 2mm;
+}
+.funnel-title {
+  font-size: 17pt;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--text);
+}
+.funnel-count {
+  font-size: 8.5pt;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 2mm;
+}
+
+/* board: colunas lado a lado via table (pagina alinhado) */
+.kanban-board {
+  display: table;
+  table-layout: fixed;
+  width: 100%;
+  border-spacing: 3.4mm 0;
+  margin: 0 -3.4mm;
+}
+.kanban-col {
+  display: table-cell;
+  vertical-align: top;
+}
+
+.col-hdr {
+  display: flex;
+  align-items: center;
+  gap: 2.4mm;
+  padding-bottom: 2.4mm;
+  margin-bottom: 3mm;
+  border-bottom: 2px solid var(--accent);
+}
+.col-num {
+  flex-shrink: 0;
+  width: 6mm; height: 6mm;
+  border-radius: 1.4mm;
+  background: var(--green-bg);
+  color: var(--accent2);
+  font-size: 8pt;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.col-name {
+  flex: 1;
+  font-size: 9.5pt;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+/* cadência: cabeçalho dentro da coluna */
+.cad-head {
+  font-size: 6pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin: 4mm 0 2mm;
+}
+
+/* linha de badges (canal + dia) */
+.drow {
+  display: flex;
+  align-items: center;
+  gap: 1.6mm;
+  margin-bottom: 1.4mm;
+  flex-wrap: wrap;
+}
+.dbadge {
+  display: inline-block;
+  font-size: 5.4pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.6mm 2mm;
+  border-radius: 100px;
+  border: 1px solid;
+  line-height: 1.4;
+}
+.dbadge-whatsapp { background:#e6f9ee; border-color:#80d4a0; color:#1a7a3a; }
+.dbadge-ligacao  { background:var(--blue-bg); border-color:var(--blue-b); color:var(--accent2); }
+.dbadge-email    { background:#fff3e0; border-color:#f0c060; color:var(--amber); }
+.dbadge-auto     { background:#f0ecfc; border-color:#c0a8f0; color:#6040b0; }
+.dbadge-default  { background:var(--s2); border-color:var(--border); color:var(--dim); }
+.dnum {
+  font-size: 6pt;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ============================================================
+   Qualification
+   ============================================================ */
+.qual-flow { margin: 4mm 0 7mm; }
+
+.qual-step {
+  display: flex;
+  gap: 4mm;
+  break-inside: avoid;
+  margin-bottom: 3mm;
+}
+.qual-rail {
+  flex-shrink: 0;
+  width: 8mm;
+  position: relative;
+  text-align: center;
+}
+.qual-rail::after {
+  content: "";
+  position: absolute;
+  top: 8mm; bottom: -3mm;
+  left: 50%;
+  width: 1px;
+  background: var(--border);
+}
+.qual-step:last-child .qual-rail::after { display: none; }
+.qual-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 7mm; height: 7mm;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 7pt;
+  font-weight: 700;
+}
+.qual-body { flex: 1; }
+.qual-body .ctxt { margin-top: 1.4mm; }
+
+.criteria-grid {
+  display: flex;
+  gap: 4mm;
+  margin: 3mm 0 6mm;
+}
+.criteria-col {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2.4mm;
+  padding: 5mm 6mm;
+  break-inside: avoid;
+}
+.criteria-col.advance { border-left: 0.9mm solid var(--accent); }
+.criteria-col.disq    { border-left: 0.9mm solid var(--red); }
+.criteria-col .clbl { margin-bottom: 3mm; }
+.criteria-col ul { margin: 0; padding-left: 4mm; }
+.criteria-col li {
+  font-size: 9pt;
+  line-height: 1.5;
+  margin-bottom: 2mm;
+  color: var(--dim);
+}
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+.muted { color: var(--muted); }
+.empty {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 9pt;
+  padding: 4mm 0;
+}

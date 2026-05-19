@@ -1,0 +1,64 @@
+<section class="section" id="sec-qualification">
+  <div class="section-opener">
+    <div class="index">03</div>
+    <div class="eyebrow section-label-anchor">Qualificação</div>
+    <h2 class="title">Roteiro de Qualificação</h2>
+    <div class="rule"></div>
+    <p class="lede">
+      Fluxo WhatsApp, pitch de ligação e critérios de avanço.
+      {% set profile = qualification.profile if qualification.profile is defined else qualification.get('profile') %}
+      {% if profile %}Perfil: <strong>{{ profile|upper }}</strong>.{% endif %}
+    </p>
+  </div>
+
+  <div class="section-content">
+    {% set flow = qualification.whatsapp_flow if qualification.whatsapp_flow is defined else qualification.get('whatsapp_flow') or [] %}
+    {% if flow %}
+    <h3 class="sub-title">Fluxo WhatsApp</h3>
+    <div class="qual-flow">
+      {% for step in flow %}
+      {% set tmap = {'message': 'verde', 'question': 'amber', 'instruction': 'blue'} %}
+      {% set tlabel = {'message': 'Mensagem', 'question': 'Pergunta', 'instruction': 'Instrução'} %}
+      <div class="qual-step">
+        <div class="qual-rail">
+          <span class="qual-dot">{{ '%02d' % loop.index }}</span>
+        </div>
+        <div class="qual-body">
+          <div class="card card--plain">
+            <div class="clbl clbl--{{ tmap.get(step.type, 'muted') }}"><span class="dot"></span>{{ tlabel.get(step.type, step.type) }}</div>
+            <div class="ctxt">{{ step.content }}</div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% set pitch = qualification.call_pitch if qualification.call_pitch is defined else qualification.get('call_pitch') %}
+    {% if pitch %}
+    <h3 class="sub-title">Pitch de Ligação</h3>
+    <div class="body-block">{{ pitch }}</div>
+    {% endif %}
+
+    {% set advance = qualification.advance_criteria if qualification.advance_criteria is defined else qualification.get('advance_criteria') or [] %}
+    {% set disq = qualification.disqualification_criteria if qualification.disqualification_criteria is defined else qualification.get('disqualification_criteria') or [] %}
+
+    {% if advance or disq %}
+    <h3 class="sub-title">Critérios</h3>
+    <div class="criteria-grid">
+      {% if advance %}
+      <div class="criteria-col advance">
+        <div class="clbl clbl--verde"><span class="dot"></span>Avanço</div>
+        <ul>{% for c in advance %}<li>{{ c }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+      {% if disq %}
+      <div class="criteria-col disq">
+        <div class="clbl clbl--red"><span class="dot"></span>Desqualificação</div>
+        <ul>{% for c in disq %}<li>{{ c }}</li>{% endfor %}</ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>

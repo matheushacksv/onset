@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from accounts.models import User
+from django.utils import timezone
 
 
 class OnboardingForm(models.Model):
@@ -148,4 +150,25 @@ class GeneratedMaterial(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class MaterialShare(models.Model):
+    material = models.OneToOneField(GeneratedMaterial, on_delete=models.CASCADE, related_name='share')
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    password_hash = models.CharField(max_length=255, blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    revoked = models.BooleanField(default=False)
+    view_count = models.PositiveIntegerField(default=0)
+    last_viewed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def is_active(self):
+        if self.revoked:
+            return False
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        return True
+    
+    def __str__(self):
+        return f'Share {self.token[:8]}... -> material {self.material_id}'

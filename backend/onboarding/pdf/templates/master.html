@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block cover_eyebrow %}Material de Vendas{% endblock %}
+{% block cover_subtitle %}Operação comercial completa — script CRM, estratégia de fechamento e roteiro de qualificação.{% endblock %}
+{% block cover_kind %}Material completo{% endblock %}
+
+{% block body %}
+  {# ---------- TOC ---------- #}
+  <section class="toc">
+    <div class="toc-title">Sumário</div>
+    <ul class="toc-list">
+      <li class="toc-item">
+        <a href="#sec-crm">
+          <span class="num">01</span>Script CRM
+        </a>
+      </li>
+      <li class="toc-item">
+        <a href="#sec-closing">
+          <span class="num">02</span>Fechamento
+        </a>
+      </li>
+      <li class="toc-item">
+        <a href="#sec-qualification">
+          <span class="num">03</span>Qualificação
+        </a>
+      </li>
+    </ul>
+  </section>
+
+  {% include "_crm_section.html" %}
+  {% include "_closing_section.html" %}
+  {% include "_qualification_section.html" %}
+{% endblock %}

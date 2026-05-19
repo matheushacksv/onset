@@ -1,0 +1,78 @@
+<section class="section" id="sec-crm">
+  <div class="section-opener">
+    <div class="index">01</div>
+    <div class="eyebrow section-label-anchor">Script CRM</div>
+    <h2 class="title">Operação Comercial</h2>
+    <div class="rule"></div>
+    <p class="lede">Funis, etapas e cadências de contato — base operacional para o time de pré-vendas e closers.</p>
+  </div>
+
+  {% set funnels = crm.funnels if crm.funnels is defined else (crm.get('funnels') or []) %}
+  {% if not funnels %}
+    <p class="empty">Nenhum funil configurado.</p>
+  {% endif %}
+
+  {% for funnel in funnels %}
+  <div class="funnel-block">
+    <div class="funnel-header">
+      <div class="funnel-eyebrow">Funil {{ loop.index }} de {{ funnels|length }}</div>
+      <h3 class="funnel-title">
+        {{ funnel.name or funnel.key }}<span class="funnel-count">· {{ funnel.stages|length }} etapas</span>
+      </h3>
+    </div>
+
+    <div class="kanban-board">
+      {% for stage in funnel.stages %}
+      <div class="kanban-col">
+        <div class="col-hdr">
+          <span class="col-num">{{ loop.index }}</span>
+          <span class="col-name">{{ stage.name }}</span>
+        </div>
+
+        <div class="card card--objetivo">
+          <div class="clbl clbl--verde"><span class="dot"></span>Objetivo</div>
+          <div class="ctxt">{{ stage.objective }}</div>
+        </div>
+
+        <div class="card card--avanco">
+          <div class="clbl clbl--blue"><span class="dot"></span>Critério de avanço</div>
+          <div class="ctxt">{{ stage.advance_criteria }}</div>
+        </div>
+
+        {% if stage.loss_reason %}
+        <div class="card card--perda">
+          <div class="clbl clbl--red"><span class="dot"></span>Motivo de perda</div>
+          <div class="ctxt">{{ stage.loss_reason }}</div>
+        </div>
+        {% endif %}
+
+        {% if stage.dev_instructions and not public %}
+        <div class="card card--dev">
+          <div class="clbl clbl--amber"><span class="dot"></span>Instrução à equipe</div>
+          <div class="ctxt">{{ stage.dev_instructions }}</div>
+        </div>
+        {% endif %}
+
+        {% if stage.cadence %}
+        <div class="cad-head">Cadência de contato</div>
+        {% for day in stage.cadence %}
+        {% for action in day.actions %}
+        <div class="card card--msg">
+          <div class="drow">
+            <span class="dbadge dbadge-{{ action.channel|channel_slug }}">{{ action.channel }}</span>
+            <span class="dnum">Dia {{ day.day }}</span>
+          </div>
+          <div class="sbox">{{ action.message }}</div>
+          {% if action.instructions %}
+          <div class="ibox">{{ action.instructions }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</section>

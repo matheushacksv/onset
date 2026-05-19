@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ deal_name }} — {{ kind|capitalize }}</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<span class="deal-name-anchor" style="display:none">{{ deal_name }}</span>
+
+{# ---------- COVER ---------- #}
+<section class="cover">
+  <img src="logo.png" alt="Logo" class="cover-logo">
+
+  <div class="cover-main">
+    <div class="cover-eyebrow">{% block cover_eyebrow %}Material de Vendas{% endblock %}</div>
+    <h1 class="cover-title">{{ deal_name }}</h1>
+    <p class="cover-subtitle">{% block cover_subtitle %}Estratégia comercial, cadências e roteiros operacionais.{% endblock %}</p>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-grid">
+      <div class="col">
+        <span class="label">Assessor</span>
+        <span class="value">{{ assessor_name }}</span>
+      </div>
+      <div class="col">
+        <span class="label">Gerado em</span>
+        <span class="value">{{ generated_at.strftime('%d.%m.%Y') }}</span>
+      </div>
+      <div class="col">
+        <span class="label">Documento</span>
+        <span class="value">{% block cover_kind %}Material completo{% endblock %}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- BODY (filled by child template) ---------- #}
+{% block body %}{% endblock %}
+
+</body>
+</html>

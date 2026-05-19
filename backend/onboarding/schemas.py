@@ -267,3 +267,42 @@ class MaterialLibraryItemOut(Schema):
         return obj.material.published_at if hasattr(obj, 'material') and obj.material else None
     
 
+class ShareCreateIn(Schema):
+    expires_in_days: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    password: Optional[str] = None
+
+class ShareUnlockIn(Schema):
+    password: str
+
+class ShareOut(Schema):
+    token: str
+    url: str
+    has_password: bool
+    expires_at: Optional[datetime] = None
+    revoked: bool
+    view_count: int
+    last_viewed_at: Optional[datetime] = None
+    created_at: datetime
+
+    @staticmethod
+    def resolve_url(obj):
+        return f'/share/{obj.token}'
+    
+    @staticmethod
+    def resolve_has_password(obj):
+        return bool(obj.password_hash)
+    
+class SharedGateOut(Schema):
+    password_required: bool = True
+    deal_name: str
+
+class SharedMaterialOut(Schema):
+    deal_name: str
+    assessor_name: Optional[str] = None
+    generated_at: datetime
+    crm: Optional[Any] = None
+    closing: Optional[Any] = None
+    qualification: Optional[Any] = None
+    grant: Optional[str] = None
+
