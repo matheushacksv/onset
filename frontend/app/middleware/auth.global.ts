@@ -7,6 +7,9 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo('/')
   }
 
+  // /share/** é público (link de visualização do cliente)
+  if (to.path.startsWith('/share')) return
+
   if (!PUBLIC_ROUTES.includes(to.path) && !to.path.startsWith('/admin') && !isLoggedIn.value) {
     return navigateTo('/login')
   }

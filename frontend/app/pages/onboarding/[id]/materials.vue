@@ -67,6 +67,13 @@
           </button>
           <button
             v-if="!isDesenvolvedor && materials?.status === 'complete'"
+            class="px-3 py-1.5 text-sm text-white/50 hover:text-white/80 border border-white/10 rounded-lg transition-all"
+            @click="shareModalOpen = true"
+          >
+            Compartilhar
+          </button>
+          <button
+            v-if="!isDesenvolvedor && materials?.status === 'complete'"
             class="px-3 py-1.5 text-sm rounded-lg transition-all disabled:opacity-40"
             :class="materials?.published
               ? 'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/15'
@@ -513,6 +520,12 @@
       </button>
     </div>
 
+    <ObShareModal
+      :open="shareModalOpen"
+      :onboarding-id="id"
+      @close="shareModalOpen = false"
+    />
+
     <ObCreateMaterialModal
       :open="createModalOpen"
       :loading="creatingMaterial"
@@ -684,6 +697,7 @@ const handleRegenerate = async () => {
 }
 
 const createModalOpen = ref(false)
+const shareModalOpen = ref(false)
 const dataDrawerOpen = ref(false)
 const assistantOpen = ref(false)
 const creatingMaterial = ref(false)

@@ -1,0 +1,63 @@
+<section class="section" id="sec-closing">
+  <div class="section-opener">
+    <div class="index">02</div>
+    <div class="eyebrow section-label-anchor">Fechamento</div>
+    <h2 class="title">Estratégia de Fechamento</h2>
+    <div class="rule"></div>
+    <p class="lede">Diagnóstico, apresentação de preço, matriz de objeções e script de fechamento.</p>
+  </div>
+
+  <div class="section-content">
+    {% set diag = closing.diagnostic_questions if closing.diagnostic_questions is defined else closing.get('diagnostic_questions') or [] %}
+    {% if diag %}
+    <h3 class="sub-title">Perguntas de Diagnóstico</h3>
+    <ol class="diagnostic">
+      {% for q in diag %}<li>{{ q }}</li>{% endfor %}
+    </ol>
+    {% endif %}
+
+    {% set price = closing.price_presentation if closing.price_presentation is defined else closing.get('price_presentation') %}
+    {% if price %}
+    <h3 class="sub-title">Apresentação de Preço</h3>
+    <div class="body-block">{{ price }}</div>
+    {% endif %}
+
+    {% set matrix = closing.objection_matrix if closing.objection_matrix is defined else closing.get('objection_matrix') or [] %}
+    {% if matrix %}
+    <h3 class="sub-title">Matriz de Objeções</h3>
+    <table class="objection-table">
+      <thead>
+        <tr>
+          <th style="width:28%">Objeção</th>
+          <th style="width:28%">Medo real</th>
+          <th>Contra-argumento</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in matrix %}
+        <tr>
+          <td>{{ row.objection }}</td>
+          <td>{{ row.hidden_concern }}</td>
+          <td>{{ row.counter_script }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    {% set script = closing.closing_script if closing.closing_script is defined else closing.get('closing_script') %}
+    {% if script %}
+    <h3 class="sub-title">Script de Fechamento</h3>
+    <div class="body-block">{{ script }}</div>
+    {% endif %}
+
+    {% set special = closing.special_condition if closing.special_condition is defined else closing.get('special_condition') %}
+    {% if special %}
+    <h3 class="sub-title">Condição Especial</h3>
+    <div class="card card--avanco">
+      <div class="clbl clbl--blue"><span class="dot"></span>Oferta exclusiva</div>
+      <div class="ctxt">{{ special }}</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
