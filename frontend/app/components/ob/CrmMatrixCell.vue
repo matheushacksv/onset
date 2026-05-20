@@ -1,8 +1,12 @@
 <template>
   <div class="rounded-xl bg-white/[0.03] ring-1 ring-white/10 hover:ring-white/20 transition-all">
-    <button
-      class="w-full flex items-center gap-3 px-3 py-2.5 text-left"
+    <div
+      role="button"
+      tabindex="0"
+      class="w-full flex items-center gap-3 px-3 py-2.5 text-left cursor-pointer select-none"
       @click="expanded = !expanded"
+      @keydown.enter.prevent="expanded = !expanded"
+      @keydown.space.prevent="expanded = !expanded"
     >
       <span
         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium uppercase tracking-wide shrink-0 ring-1"
@@ -27,7 +31,7 @@
       <svg class="w-3.5 h-3.5 text-white/40 transition-transform shrink-0" :class="expanded ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
         <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
       </svg>
-    </button>
+    </div>
     <div v-if="expanded" class="px-3 pb-3 space-y-2 border-t border-white/5">
       <p class="text-xs text-white/85 whitespace-pre-wrap mt-2">{{ action.message || '—' }}</p>
       <div v-if="action.instructions" class="rounded-lg bg-amber-500/5 ring-1 ring-amber-500/20 p-2">

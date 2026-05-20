@@ -1,7 +1,8 @@
 from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
-from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn
+from accounts.models import User
+from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut
 from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
 from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
@@ -193,16 +194,36 @@ def _build_note(o: OnboardingForm) -> str:
     return '\n'.join(lines)
 
 
-@router.get('/dev/materials', response={200: list[MaterialLibraryItemOut], 403: Error})
-def list_materials_to_dev(request):
+@router.get('/dev/materials', response={200: MaterialLibraryPageOut, 403: Error})
+def list_materials_to_dev(request, q: str = '', assessor_id: int = None, sort: str = 'recent', limit: int = 12, offset: int = 0):
     if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
         return Status(403, Error(detail='Não autorizado'))
-    return (
+    qs = (
         OnboardingForm.objects
         .filter(material__status=GeneratedMaterial.Status.COMPLETE, material__published=True)
         .select_related('assessor', 'material')
-        .order_by('-material__published_at')
     )
+    if q:
+        qs = qs.filter(pipedrive_deal_name__icontains=q)
+    if assessor_id:
+        qs = qs.filter(assessor_id=assessor_id)
+    order = {'recent': '-material__published_at',
+             'old': 'material__published_at',
+             'name': 'pipedrive_deal_name'}.get(sort, '-material__published_at')
+    qs = qs.order_by(order)
+    total = qs.count()
+    items = list(qs[offset:offset + limit])
+    return Status(200, {'items': items, 'total': total})
+
+@router.get('/dev/materials/assessors', response={200: list[AssessorOption], 403: Error})
+def list_material_assessors(request):
+    if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
+        return Status(403, Error(detail='Não autorizado'))
+    ids = (OnboardingForm.objects
+           .filter(material__status=GeneratedMaterial.Status.COMPLETE, material__published=True)
+           .values_list('assessor_id', flat=True).distinct())
+    return User.objects.filter(id__in=ids).order_by('name')
+
 
 
 @router.get('/dev/materials/{onboarding_id}', response={200: DevMaterialDetailOut, 403: Error, 404: Error})

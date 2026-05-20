@@ -266,6 +266,17 @@ class MaterialLibraryItemOut(Schema):
     def resolve_published_at(obj):
         return obj.material.published_at if hasattr(obj, 'material') and obj.material else None
     
+class MaterialLibraryPageOut(Schema):
+    items: list[MaterialLibraryItemOut]
+    total: int
+
+class AssessorOption(Schema):
+    id: int
+    name: str
+
+    @staticmethod
+    def resolve_name(obj):
+        return obj.name or obj.email
 
 class ShareCreateIn(Schema):
     expires_in_days: Optional[int] = None
