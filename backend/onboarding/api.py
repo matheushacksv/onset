@@ -2,7 +2,7 @@ from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
 from accounts.models import User
-from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut
+from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut, DuplicateOnboardingIn
 from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
 from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
@@ -314,6 +314,44 @@ def delete_draft_onboarding(request, id: int):
         return Status(404, Error(detail=f'Erro ao deletar rascunho: {e}'))
 
     return Status(204, None)
+
+@router.post('/{id}/duplicate', response={200: OnboardingOut, 404: Error, 409: Error})
+def duplicate_onboarding(request, id: int, data: DuplicateOnboardingIn):
+    source = get_object_or_404(OnboardingForm, id=id)
+
+    if data.pipedrive_deal_id:
+        if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exists():
+            return 409, Error(detail='Já existe onboarding para esse deal')
+    
+    EXCLUDE = {'id', 'assessor', 'created_at', 'updated_at', 'pipedrive_deal_id', 'pipedrive_deal_name', 'status'}
+
+    payload = {
+        f.name: getattr(source, f.name)
+        for f in OnboardingForm._meta.fields
+        if f.name not in EXCLUDE and not f.is_relation
+    }
+
+    new_ob = OnboardingForm.objects.create(
+        assessor=request.auth,
+        pipedrive_deal_id=data.pipedrive_deal_id or None,
+        pipedrive_deal_name=data.pipedrive_deal_name or '',
+        status=OnboardingForm.Status.DRAFT,
+        **payload,
+    )
+
+    if data.include_material:
+        src_mat = getattr(source, 'material', None)
+        if src_mat and src_mat.status == GeneratedMaterial.Status.COMPLETE:
+            GeneratedMaterial.objects.create(
+                onboarding=new_ob,
+                status=GeneratedMaterial.Status.COMPLETE,
+                crm=copy.deepcopy(src_mat.crm),
+                closing=copy.deepcopy(src_mat.closing),
+                qualification=copy.deepcopy(src_mat.qualification),
+                published=False,
+                quality_alerts=copy.deepcopy(src_mat.quality_alerts or []),
+            )
+    return 200, new_ob
 
 #* ----- Material -----
 

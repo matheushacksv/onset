@@ -20,7 +20,7 @@ class OnboardingForm(models.Model):
         HIBRIDO     = 'hibrido',     'Híbrido (fixo + êxito)'
 
     # ── Meta ──────────────────────────────────────────────────
-    pipedrive_deal_id   = models.CharField(max_length=50, unique=True)
+    pipedrive_deal_id   = models.CharField(max_length=50, null=True, blank=True, unique=True)
     pipedrive_deal_name = models.CharField(max_length=255)
     assessor            = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='onboardings')
     status              = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
