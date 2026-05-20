@@ -50,7 +50,7 @@
                   <p class="text-neutral-900 dark:text-white text-sm font-medium truncate">{{ cleanDealName(item.pipedrive_deal_name) }}</p>
                 </div>
                 <span
-                  class="text-xs px-2.5 py-1 rounded-full font-medium shrink-0"
+                  class="text-xs px-2.5 py-1 rounded-full font-medium shrink-0 transition-opacity group-hover:opacity-0"
                   :class="{
                     'bg-black/5 dark:bg-white/5 text-neutral-500 dark:text-white/40': item.status === 'draft',
                     'bg-blue-400/15 text-blue-600 dark:text-blue-300': item.status === 'complete',
@@ -82,11 +82,21 @@
               Ver materiais
             </a>
 
-            <!-- chevron repouso / lixeira hover -->
-            <div class="absolute top-4 right-4 flex items-center justify-center">
+            <!-- chevron repouso / ações hover -->
+            <div class="absolute top-4 right-4 flex items-center justify-center gap-1">
               <svg class="w-4 h-4 text-neutral-300 dark:text-white/20 group-hover:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
               </svg>
+              <button
+                v-if="!isDesenvolvedor"
+                class="hidden group-hover:flex items-center justify-center p-1 rounded-lg text-neutral-400 dark:text-white/30 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all"
+                title="Duplicar onboarding"
+                @click.prevent="openDuplicate(item)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                </svg>
+              </button>
               <button
                 v-if="!isDesenvolvedor"
                 class="hidden group-hover:flex items-center justify-center p-1 rounded-lg text-neutral-400 dark:text-white/30 hover:text-red-500 hover:bg-red-500/10 transition-all"
@@ -159,6 +169,15 @@
         </div>
       </div>
     </div>
+
+    <ObDuplicateModal
+      :open="duplicateOpen"
+      :source-id="duplicateSource?.id ?? null"
+      :source-name="duplicateSource ? cleanDealName(duplicateSource.pipedrive_deal_name) : ''"
+      :has-material="duplicateSource?.material_status === 'complete'"
+      @close="duplicateOpen = false"
+      @duplicated="onDuplicated"
+    />
   </div>
 </template>
 
@@ -261,6 +280,18 @@ const startOnboarding = async (deal: { id: number; title: string }) => {
   } finally {
     creatingId.value = null
   }
+}
+
+type OnboardingRow = typeof onboardings.value[number]
+const duplicateOpen = ref(false)
+const duplicateSource = ref<OnboardingRow | null>(null)
+const openDuplicate = (item: OnboardingRow) => {
+  duplicateSource.value = item
+  duplicateOpen.value = true
+}
+const onDuplicated = async (newId: number) => {
+  duplicateOpen.value = false
+  await navigateTo(`/onboarding/${newId}`)
 }
 
 const deleteOnboarding = async (id: number) => {

@@ -317,3 +317,7 @@ class SharedMaterialOut(Schema):
     qualification: Optional[Any] = None
     grant: Optional[str] = None
 
+class DuplicateOnboardingIn(Schema):
+    pipedrive_deal_id: Optional[str] = None
+    pipedrive_deal_name: Optional[str] = None
+    include_material: bool = False
