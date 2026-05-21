@@ -155,16 +155,26 @@ async function loadRoles() {
     <div>
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-medium text-neutral-500 dark:text-white/50 uppercase tracking-widest">Equipe</h2>
-        <button
-          v-if="user?.is_superuser"
-          class="text-xs font-medium text-neutral-700 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 ring-1 ring-neutral-200 dark:ring-white/10 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
-          @click="router.push('/equipe/novo')"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          Novo funcionário
-        </button>
+        <div v-if="user?.is_superuser" class="flex items-center gap-2">
+          <button
+            class="text-xs font-medium text-neutral-700 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 ring-1 ring-neutral-200 dark:ring-white/10 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+            @click="router.push('/regras')"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+            </svg>
+            Regras
+          </button>
+          <button
+            class="text-xs font-medium text-neutral-700 dark:text-white/70 hover:text-neutral-900 dark:hover:text-white bg-neutral-100 dark:bg-white/5 hover:bg-neutral-200 dark:hover:bg-white/10 ring-1 ring-neutral-200 dark:ring-white/10 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5"
+            @click="router.push('/equipe/novo')"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Novo funcionário
+          </button>
+        </div>
       </div>
       <div v-if="!loading" class="bg-white dark:bg-white/5 backdrop-blur-xl ring-1 ring-neutral-200 dark:ring-white/10 rounded-2xl divide-y divide-white/5">
         <div

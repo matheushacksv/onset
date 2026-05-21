@@ -557,6 +557,31 @@
       <div v-show="step === 8">
         <ObStepHeader tag="Etapa 8 de 8" title="Revisão e envio" desc="Confirme os dados e sincronize com o Pipedrive." />
 
+        <!-- Regras obrigatórias -->
+        <div v-if="rules.length" class="bg-amber-400/5 ring-1 ring-amber-400/10 rounded-2xl p-4 mb-6">
+          <p class="text-xs font-semibold text-amber-300/60 uppercase tracking-widest mb-3">
+            Confirme antes de sincronizar
+          </p>
+          <div class="space-y-3">
+            <label
+              v-for="rule in rules"
+              :key="rule.id"
+              class="flex items-start gap-3 cursor-pointer group"
+            >
+              <input
+                type="checkbox"
+                :checked="rule.checked"
+                class="mt-0.5 w-4 h-4 accent-amber-400 shrink-0 cursor-pointer"
+                @change="onToggleRule(rule)"
+              />
+              <span class="min-w-0">
+                <span class="block text-sm text-white/80 font-medium">{{ rule.name }}</span>
+                <span class="block text-xs text-white/50 leading-relaxed mt-0.5" v-html="renderRichText(rule.content)" />
+              </span>
+            </label>
+          </div>
+        </div>
+
         <div class="bg-blue-400/5 ring-1 ring-blue-400/10 rounded-2xl p-4 mb-6 text-sm text-blue-300/80 leading-relaxed">
           Ao clicar em <strong class="text-blue-300">Finalizar e Sincronizar</strong>, uma nota com o briefing completo será criada no deal do Pipedrive.
         </div>
@@ -691,8 +716,9 @@
           <button
             v-else-if="status !== 'synced'"
             class="px-6 py-2 bg-white text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center gap-2"
-            :disabled="submitting"
-            @click="submit"
+            :disabled="submitting || pendingRules"
+            :title="pendingRules ? 'Confirme todas as regras antes de sincronizar' : ''"
+            @click="submitGuarded"
           >
             <svg v-if="submitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -715,6 +741,8 @@
 </template>
 
 <script setup lang="ts">
+import type { RuleWithAck } from '~/composables/useRules'
+
 const route = useRoute()
 const id = route.params.id as string
 
@@ -730,6 +758,31 @@ const {
 const createModalOpen = ref(false)
 const creatingMaterial = ref(false)
 const router = useRouter()
+
+// ── Regras de onboarding ──
+const { loadOnboardingRules, toggleAck } = useRules()
+const rules = ref<RuleWithAck[]>([])
+const pendingRules = computed(() => rules.value.some(r => !r.checked))
+
+const onToggleRule = async (rule: RuleWithAck) => {
+  const prev = rule.checked
+  rule.checked = !prev
+  try {
+    const res = await toggleAck(id, rule.id)
+    rule.checked = res.checked
+  } catch {
+    rule.checked = prev
+    alert('Falha ao registrar confirmação.')
+  }
+}
+
+const submitGuarded = async () => {
+  try {
+    await submit()
+  } catch (err: any) {
+    alert(err?.data?.detail || err?.message || 'Erro ao sincronizar')
+  }
+}
 
 const handleCreateMaterial = async (payload: { mode: 'ai' | 'blank' | 'copy'; sourceId?: number }) => {
   creatingMaterial.value = true
@@ -823,5 +876,7 @@ await loadMaterials()
 if (!dealId.value && materials.value?.status === 'complete') {
   await navigateTo(`/onboarding/${id}/materials`, { replace: true })
 }
+
+try { rules.value = await loadOnboardingRules(id) } catch { rules.value = [] }
 </script>
 

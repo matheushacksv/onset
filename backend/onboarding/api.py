@@ -4,13 +4,13 @@ from .models import OnboardingForm
 from accounts.models import User
 from .schemas import (DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, 
                       ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut, 
-                      DuplicateOnboardingIn, AttachDealIn, BlankMaterialIn, CloneMaterialIn)
+                      DuplicateOnboardingIn, AttachDealIn, BlankMaterialIn, CloneMaterialIn, RuleOut, RuleIn, RuleWithAckOut)
 from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
 from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
 from core.errors import Error
 from django.shortcuts import get_object_or_404
-from .models import GeneratedMaterial, MaterialShare
+from .models import GeneratedMaterial, MaterialShare, OnboardingRule, OnboardingRuleAck
 from django.utils import timezone
 from django.http import HttpResponse
 from django.utils.text import slugify
@@ -26,6 +26,9 @@ router = Router(tags=['Onboarding'])
 
 def _is_desenvolvedor(user) -> bool:
     return user.groups.filter(name='Desenvolvedor').exists() and not user.is_superuser
+
+def _is_admin(user) -> bool:
+    return user.is_superuser
 
 def _build_note(o: OnboardingForm) -> str:
     def v(value) -> str:
@@ -226,8 +229,6 @@ def list_material_assessors(request):
            .values_list('assessor_id', flat=True).distinct())
     return User.objects.filter(id__in=ids).order_by('name')
 
-
-
 @router.get('/dev/materials/{onboarding_id}', response={200: DevMaterialDetailOut, 403: Error, 404: Error})
 def get_materials_to_dev(request, onboarding_id: int):
     if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
@@ -238,7 +239,6 @@ def get_materials_to_dev(request, onboarding_id: int):
         material__status=GeneratedMaterial.Status.COMPLETE,
         material__published=True,
     )
-
 
 @router.get('/deals/', response={200: list[DealOut], 400: Error})
 def list_onboarding_deals(request):
@@ -324,6 +324,72 @@ def clone_material_to_blank(request, data: CloneMaterialIn):
     )
     return Status(200, ob)
 
+#* ---- Admin configs ----
+
+@router.get('/list-rules', response={200: list[RuleOut], 403: Error})
+def list_rules(request):
+    if not _is_admin(request.auth):
+        return Status(403, Error(detail='Não autorizado'))
+    return Status(200, list(OnboardingRule.objects.all()))
+
+@router.post('/rules', response={200: RuleOut, 403: Error})
+def create_rule(request, data: RuleIn):
+    if not _is_admin(request.auth):
+        return Status(403, Error(detail='Não autorizado'))
+    
+    rule = OnboardingRule.objects.create(
+        name=data.name, content=data.content, active=data.active,
+        order=data.order, created_by=request.auth
+    )
+    return Status(200, rule)
+
+@router.put('/rules/{rule_id}', response={200: RuleOut, 403: Error, 404: Error})
+def update_rule(request, rule_id: int, data: RuleIn):
+    if not _is_admin(request.auth):
+        return Status(403, Error(detail='Não autorizado'))
+    
+    rule = get_object_or_404(OnboardingRule, id=rule_id)
+    rule.name = data.name
+    rule.content = data.content
+    rule.active = data.active
+    rule.order = data.order
+    rule.save()
+    return Status(200, rule)
+
+@router.delete('/rules/{rule_id}', response={204: None, 403: Error, 404: Error})
+def delete_rule(request, rule_id: int):
+    if not _is_admin(request.auth):
+        return Status(403, Error(detail='Não autorizado'))
+    
+    get_object_or_404(OnboardingRule, id=rule_id).delete()
+    return Status(204, None)
+
+@router.get('/{id}/rules', response={200: list[RuleWithAckOut], 404: Error})
+def onboarding_rules(request, id: int):
+    if not OnboardingForm.objects.filter(id=id).exists():
+        return Status(404, Error(detail='Onboarding não encontrado'))
+    
+    acked = set(OnboardingRuleAck.objects.filter(onboarding_id=id).values_list('rule_id', flat=True))
+    return Status(200, [
+        RuleWithAckOut(id=r.id, name=r.name, content=r.content, checked=r.id in acked)
+        for r in OnboardingRule.objects.filter(active=True)
+    ])
+
+@router.post('/{id}/rules/{rule_id}', response={200: dict, 404: Error})
+def toggle_rule_ack(request, id: int, rule_id: int):
+    if not OnboardingForm.objects.filter(id=id).exists() or not OnboardingRule.objects.filter(id=rule_id).exists():
+        return Status(404, Error(detail='Onboarding ou Regra não existe'))
+    
+    ack, created = OnboardingRuleAck.objects.get_or_create(
+        rule_id=rule_id, onboarding_id=id, defaults={'checked_by': request.auth},
+    )
+    if not created:
+        ack.delete()
+        return Status(200, {'checked': False})
+    return Status(200, {'checked': True})
+
+#* ---- Onboarding (continue) ----
+
 @router.get('/{id}', response={200: OnboardingOut, 404: Error})
 def get_onboarding(request, id: int):
     onboarding = get_object_or_404(OnboardingForm, id=id)
@@ -347,6 +413,9 @@ def submit_onboarding(request, id: int):
     onboarding = get_object_or_404(OnboardingForm, id=id)
 
     if onboarding.pipedrive_deal_id:
+        acked = set(OnboardingRuleAck.objects.filter(onboarding=onboarding).values_list('rule_id', flat=True))
+        if OnboardingRule.objects.filter(active=True).exclude(id__in=acked).exists():
+            return Status(400, Error(detail='Confirme todas as regras obrigatórias antes de sincronizar'))
         try:
             create_note(
                 deal_id=onboarding.pipedrive_deal_id,
@@ -710,3 +779,5 @@ def shared_pdf(request, token: str, kind: str, grant: str = None):
     resp = HttpResponse(pdf_bytes, content_type='application/pdf')
     resp['Content-Disposition'] = f'inline; filename="{deal_slug}--{kind}.pdf"'
     return resp
+
+
