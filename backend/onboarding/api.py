@@ -2,7 +2,9 @@ from django_q.tasks import async_task
 from ninja import Router, Status
 from .models import OnboardingForm
 from accounts.models import User
-from .schemas import DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut, DuplicateOnboardingIn
+from .schemas import (DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, 
+                      ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut, 
+                      DuplicateOnboardingIn, AttachDealIn, BlankMaterialIn, CloneMaterialIn)
 from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
 from .agents.assistant import AssistantSession
 from .pipedrive_services import list_deals, update_deal, create_note
@@ -259,16 +261,68 @@ def list_onboardings(request):
 def create_onboarding(request, data: OnboardingCreateIn):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
-
-    if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exists():
-        return Status(409, Error(detail='Já existe um onboarding para este deal'))
+    
+    if data.pipedrive_deal_id:
+        if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exists():
+            return Status(409, Error(detail='Já existe um onboarding para este deal'))
 
     onboarding = OnboardingForm.objects.create(
-        pipedrive_deal_id=data.pipedrive_deal_id,
-        pipedrive_deal_name=data.pipedrive_deal_name,
-        assessor=request.auth
+        assessor=request.auth,
+        pipedrive_deal_id=data.pipedrive_deal_id or None,
+        pipedrive_deal_name=data.pipedrive_deal_name or 'Sem deal',
+        status=OnboardingForm.Status.DRAFT
     )
     return Status(200, onboarding)
+
+@router.post('/{id}/attach-deal', response={200: OnboardingOut, 404: Error, 409: Error})
+def attach_deal(request, id: int, data: AttachDealIn):
+    ob = get_object_or_404(OnboardingForm, id=id)
+    if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exclude(id=id).exists():
+        return Status(409, Error(detail='Já existe onboarding para esse deal'))
+    
+    ob.pipedrive_deal_id = data.pipedrive_deal_id
+    ob.pipedrive_deal_name = data.pipedrive_deal_name
+    ob.save(update_fields=['pipedrive_deal_id', 'pipedrive_deal_name', 'updated_at'])
+    return Status(200, ob)
+
+@router.post('/blank-material', response={200: OnboardingOut})
+def create_blank_material(request, data: BlankMaterialIn):
+    ob = OnboardingForm.objects.create(
+        assessor=request.auth,
+        pipedrive_deal_id=None,
+        pipedrive_deal_name=data.name or 'Material sem deal e nome',
+        status=OnboardingForm.Status.DRAFT
+    )
+    GeneratedMaterial.objects.create(
+        onboarding=ob,
+        status=GeneratedMaterial.Status.COMPLETE,
+        crm={'funnels': []},
+        closing={'diagnostic_questions': [], 'price_presentation': '', 'objection_matrix': [], 'closing_script': ''},
+        qualification={'profile': None, 'whatsapp_flow': [], 'call_pitch': '', 'advance_criteria': [], 'disqualification_criteria': []},
+        published=False,
+        quality_alerts=[],
+    )
+    return Status(200, ob)
+
+@router.post('/clone-material', response={200: OnboardingOut, 404: Error})
+def clone_material_to_blank(request, data: CloneMaterialIn):
+    source = get_object_or_404(GeneratedMaterial, id=data.source_material_id)
+    ob = OnboardingForm.objects.create(
+        assessor=request.auth,
+        pipedrive_deal_id=None,
+        pipedrive_deal_name=data.name or f'Cópia de {source.onboarding.pipedrive_deal_name}',
+        status=OnboardingForm.Status.DRAFT,
+    )
+    GeneratedMaterial.objects.create(
+        onboarding=ob,
+        status=GeneratedMaterial.Status.COMPLETE,
+        crm=copy.deepcopy(source.crm),
+        closing=copy.deepcopy(source.closing),
+        qualification=copy.deepcopy(source.qualification),
+        published=False,
+        quality_alerts=[]
+    )
+    return Status(200, ob)
 
 @router.get('/{id}', response={200: OnboardingOut, 404: Error})
 def get_onboarding(request, id: int):
@@ -292,13 +346,14 @@ def submit_onboarding(request, id: int):
         return Status(403, Error(detail='Acesso negado'))
     onboarding = get_object_or_404(OnboardingForm, id=id)
 
-    try:
-        create_note(
-            deal_id=onboarding.pipedrive_deal_id,
-            content=_build_note(onboarding)
-        )
-    except Exception as e:
-        return Status(400, Error(detail=f'Erro ao sincronizar com Pipedrive: {e}'))
+    if onboarding.pipedrive_deal_id:
+        try:
+            create_note(
+                deal_id=onboarding.pipedrive_deal_id,
+                content=_build_note(onboarding)
+            )
+        except Exception as e:
+            return Status(400, Error(detail=f'Erro ao sincronizar com Pipedrive: {e}'))
 
     onboarding.status = OnboardingForm.Status.SYNCED
     onboarding.save()

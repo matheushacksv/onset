@@ -92,6 +92,25 @@
       </div>
     </div>
 
+    <div v-if="!dealId && !isDesenvolvedor" class="max-w-4xl mx-auto px-6 pt-4">
+      <div class="flex items-center justify-between gap-4 p-3 rounded-xl bg-amber-400/5 ring-1 ring-amber-400/20">
+        <div class="flex items-center gap-2 min-w-0">
+          <svg class="w-4 h-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.732 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <p class="text-xs text-amber-200/90 truncate">
+            Sem deal Pipedrive anexado. Publicar e compartilhar funcionam normalmente; sincronização Pipedrive fica indisponível.
+          </p>
+        </div>
+        <button
+          class="shrink-0 px-3 py-1.5 text-xs font-semibold bg-amber-400/15 text-amber-200 hover:bg-amber-400/25 rounded-lg transition-colors"
+          @click="attachOpen = true"
+        >
+          Anexar deal
+        </button>
+      </div>
+    </div>
+
     <div class="max-w-4xl mx-auto px-6 py-8 pb-24">
 
       <!-- Generating state -->
@@ -551,6 +570,13 @@
       :focus-label="assistantFocusLabel"
       @close="assistantOpen = false"
     />
+
+    <ObAttachDealModal
+      :open="attachOpen"
+      :onboarding-id="Number(id)"
+      @close="attachOpen = false"
+      @attached="onAttached"
+    />
   </div>
 </template>
 
@@ -565,8 +591,15 @@ const id = route.params.id as string
 const {
   materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
   createManualMaterial, copyMaterialFrom, loadMaterialLibrary, prepareAssistant,
-  publishMaterial, dealName, assessorName, load, form,
+  publishMaterial, dealId, dealName, assessorName, load, form,
 } = useOnboarding(id)
+
+const attachOpen = ref(false)
+const onAttached = (deal: { id: number; title: string }) => {
+  dealId.value = String(deal.id)
+  dealName.value = deal.title
+  attachOpen.value = false
+}
 
 const publishing = ref(false)
 const handlePublish = async () => {

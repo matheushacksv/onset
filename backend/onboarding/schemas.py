@@ -12,9 +12,19 @@ class DealOut(Schema):
 
 
 class OnboardingCreateIn(Schema):
+    pipedrive_deal_id: Optional[str] = None
+    pipedrive_deal_name: Optional[str] = None
+
+class AttachDealIn(Schema):
     pipedrive_deal_id: str
     pipedrive_deal_name: str
 
+class BlankMaterialIn(Schema):
+    name: Optional[str] = None
+
+class CloneMaterialIn(Schema):
+    source_material_id: int
+    name: Optional[str] = None
 
 class OnboardingStepIn(Schema):
     # Step 1 — Negócio
@@ -106,7 +116,7 @@ class OnboardingStepIn(Schema):
 
 class OnboardingOut(Schema):
     id: int
-    pipedrive_deal_id: str
+    pipedrive_deal_id: Optional[str] = None
     pipedrive_deal_name: str
     assessor_name: Optional[str] = None
     status: str

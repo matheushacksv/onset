@@ -48,7 +48,7 @@ class QualStep(Schema):
     channel: Optional[Literal['whatsapp', 'audio']] = None
 
 class QualificationScript(Schema):
-    profile: Literal['b2b','b2c'] = ''
+    profile: Optional[Literal['b2b','b2c']] = None
     whatsapp_flow: list[QualStep] = []
     call_pitch: str = ''
     advance_criteria: list[str] = []
