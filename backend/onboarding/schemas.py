@@ -331,3 +331,22 @@ class DuplicateOnboardingIn(Schema):
     pipedrive_deal_id: Optional[str] = None
     pipedrive_deal_name: Optional[str] = None
     include_material: bool = False
+
+class RuleIn(Schema):
+    name: str
+    content: str
+    active: bool = True
+    order: int = 0
+
+class RuleOut(Schema):
+    id: int
+    name: str
+    content: str
+    active: bool
+    order: int
+
+class RuleWithAckOut(Schema):
+    id: int
+    name: str
+    content: str
+    checked: bool

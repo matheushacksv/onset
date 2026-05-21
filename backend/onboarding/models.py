@@ -172,3 +172,29 @@ class MaterialShare(models.Model):
     
     def __str__(self):
         return f'Share {self.token[:8]}... -> material {self.material_id}'
+
+class OnboardingRule(models.Model):
+    name = models.CharField(max_length=255)
+    content = models.TextField()
+    active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='created_rules')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return self.name
+    
+class OnboardingRuleAck(models.Model):
+    rule = models.ForeignKey(OnboardingRule, on_delete=models.CASCADE, related_name='acks')
+    onboarding = models.ForeignKey(OnboardingForm, on_delete=models.CASCADE, related_name='rule_acks')
+    checked_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    checked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('rule', 'onboarding')
+
+
