@@ -719,7 +719,7 @@ const route = useRoute()
 const id = route.params.id as string
 
 const {
-  form, step, saving, submitting, loading, status, dealName,
+  form, step, saving, submitting, loading, status, dealId, dealName,
   load, nextStep, prevStep, submit,
   toggleChip, toggleFunil, selectPlano, addEtapa, addBonus,
   PLANOS,
@@ -818,5 +818,10 @@ const openMaterials = () => window.open(`/onboarding/${id}/materials`, '_blank')
 
 await load()
 await loadMaterials()
+
+// Placeholder (sem deal + material já completo) → redireciona pro editor
+if (!dealId.value && materials.value?.status === 'complete') {
+  await navigateTo(`/onboarding/${id}/materials`, { replace: true })
+}
 </script>
 

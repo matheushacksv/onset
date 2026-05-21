@@ -6,21 +6,42 @@
         <p class="text-xs text-neutral-500 tracking-widest uppercase mb-1">Módulo</p>
         <h1 class="text-2xl font-semibold text-neutral-900 dark:text-white tracking-tight">Onboarding</h1>
       </div>
-      <button
-        v-if="!isDesenvolvedor"
-        class="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-50"
-        :disabled="loadingDeals"
-        @click="loadDeals"
-      >
-        <svg v-if="loadingDeals" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-        </svg>
-        <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
-        Novo onboarding
-      </button>
+      <div v-if="!isDesenvolvedor" ref="newMenuRef" class="relative">
+        <button
+          class="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-50"
+          :disabled="loadingDeals || creatingBlank"
+          @click="newMenuOpen = !newMenuOpen"
+        >
+          <svg v-if="loadingDeals || creatingBlank" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+          <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Novo
+          <svg class="w-3 h-3 transition-transform" :class="newMenuOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div
+          v-show="newMenuOpen"
+          class="absolute right-0 top-full mt-1 bg-neutral-900 ring-1 ring-white/10 rounded-xl py-1 min-w-64 z-50 shadow-xl"
+        >
+          <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewWithDeal">
+            <p class="font-medium">Onboarding com deal</p>
+            <p class="text-[11px] text-white/40">Vincula a um deal do Pipedrive</p>
+          </button>
+          <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewBlank">
+            <p class="font-medium">Material em branco (IA)</p>
+            <p class="text-[11px] text-white/40">Abre editor direto, sem deal nem formulário</p>
+          </button>
+          <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onCloneExisting">
+            <p class="font-medium">Duplicar material existente</p>
+            <p class="text-[11px] text-white/40">Clona conteúdo de outro material publicado</p>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -49,16 +70,24 @@
                 <div class="min-w-0">
                   <p class="text-neutral-900 dark:text-white text-sm font-medium truncate">{{ cleanDealName(item.pipedrive_deal_name) }}</p>
                 </div>
-                <span
-                  class="text-xs px-2.5 py-1 rounded-full font-medium shrink-0 transition-opacity group-hover:opacity-0"
-                  :class="{
-                    'bg-black/5 dark:bg-white/5 text-neutral-500 dark:text-white/40': item.status === 'draft',
-                    'bg-blue-400/15 text-blue-600 dark:text-blue-300': item.status === 'complete',
-                    'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300': item.status === 'synced',
-                  }"
-                >
-                  {{ STATUS_LABEL[item.status] }}
-                </span>
+                <div class="flex items-center gap-1.5 shrink-0 transition-opacity group-hover:opacity-0">
+                  <span
+                    v-if="!item.pipedrive_deal_id"
+                    class="text-[10px] px-2 py-0.5 rounded-full font-medium uppercase tracking-wide bg-amber-400/15 text-amber-600 dark:text-amber-300"
+                  >
+                    Sem deal
+                  </span>
+                  <span
+                    class="text-xs px-2.5 py-1 rounded-full font-medium"
+                    :class="{
+                      'bg-black/5 dark:bg-white/5 text-neutral-500 dark:text-white/40': item.status === 'draft',
+                      'bg-blue-400/15 text-blue-600 dark:text-blue-300': item.status === 'complete',
+                      'bg-emerald-400/15 text-emerald-600 dark:text-emerald-300': item.status === 'synced',
+                    }"
+                  >
+                    {{ STATUS_LABEL[item.status] }}
+                  </span>
+                </div>
               </div>
               <div class="mt-3 flex items-center gap-3">
                 <div class="flex-1 h-1 bg-black/[0.06] dark:bg-white/[0.06] rounded-full overflow-hidden">
@@ -87,6 +116,16 @@
               <svg class="w-4 h-4 text-neutral-300 dark:text-white/20 group-hover:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
               </svg>
+              <button
+                v-if="!isDesenvolvedor && !item.pipedrive_deal_id"
+                class="hidden group-hover:flex items-center justify-center p-1 rounded-lg text-amber-500 dark:text-amber-400 hover:bg-amber-400/10 transition-all"
+                title="Anexar deal Pipedrive"
+                @click.prevent="openAttach(item)"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                </svg>
+              </button>
               <button
                 v-if="!isDesenvolvedor"
                 class="hidden group-hover:flex items-center justify-center p-1 rounded-lg text-neutral-400 dark:text-white/30 hover:text-neutral-700 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-all"
@@ -178,6 +217,19 @@
       @close="duplicateOpen = false"
       @duplicated="onDuplicated"
     />
+
+    <ObAttachDealModal
+      :open="attachOpen"
+      :onboarding-id="attachTarget?.id ?? null"
+      @close="attachOpen = false"
+      @attached="onAttached"
+    />
+
+    <ObCloneMaterialModal
+      :open="cloneOpen"
+      @close="cloneOpen = false"
+      @cloned="onCloned"
+    />
   </div>
 </template>
 
@@ -227,6 +279,7 @@ const filteredDeals = computed(() => {
 
 const onboardings = ref<{
   id: number
+  pipedrive_deal_id: string | null
   pipedrive_deal_name: string
   nome_empresa: string
   nicho: string
@@ -292,6 +345,62 @@ const openDuplicate = (item: OnboardingRow) => {
 const onDuplicated = async (newId: number) => {
   duplicateOpen.value = false
   await navigateTo(`/onboarding/${newId}`)
+}
+
+// ── Novo (dropdown) ─────────────────────────────────────────
+const { createBlankMaterial } = useOnboardingCreate()
+const newMenuRef = ref<HTMLElement | null>(null)
+const newMenuOpen = ref(false)
+const creatingBlank = ref(false)
+const cloneOpen = ref(false)
+
+const onNewWithDeal = async () => {
+  newMenuOpen.value = false
+  await loadDeals()
+}
+const onNewBlank = async () => {
+  if (creatingBlank.value) return
+  newMenuOpen.value = false
+  creatingBlank.value = true
+  try {
+    const r = await createBlankMaterial()
+    await navigateTo(`/onboarding/${r.id}/materials`)
+  } catch {
+    /* noop */
+  } finally {
+    creatingBlank.value = false
+  }
+}
+const onCloneExisting = () => {
+  newMenuOpen.value = false
+  cloneOpen.value = true
+}
+const onCloned = async (newId: number) => {
+  cloneOpen.value = false
+  await navigateTo(`/onboarding/${newId}/materials`)
+}
+
+onMounted(() => {
+  const handler = (e: MouseEvent) => {
+    if (newMenuRef.value && !newMenuRef.value.contains(e.target as Node)) newMenuOpen.value = false
+  }
+  document.addEventListener('click', handler)
+  onUnmounted(() => document.removeEventListener('click', handler))
+})
+
+// ── Attach deal ──────────────────────────────────────────────
+const attachOpen = ref(false)
+const attachTarget = ref<OnboardingRow | null>(null)
+const openAttach = (item: OnboardingRow) => {
+  attachTarget.value = item
+  attachOpen.value = true
+}
+const onAttached = async (deal: { id: number; title: string }) => {
+  if (attachTarget.value) {
+    attachTarget.value.pipedrive_deal_id = String(deal.id)
+    attachTarget.value.pipedrive_deal_name = deal.title
+  }
+  attachOpen.value = false
 }
 
 const deleteOnboarding = async (id: number) => {

@@ -270,6 +270,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
   const submitting = ref(false)
   const loading = ref(false)
   const status = ref<'draft' | 'complete' | 'synced'>('draft')
+  const dealId = ref<string | null>(null)
   const dealName = ref('')
   const assessorName = ref('')
 
@@ -364,6 +365,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
       }
       form.value = { ...defaults, ...formData }
       status.value = data.status as 'draft' | 'complete' | 'synced'
+      dealId.value = (data.pipedrive_deal_id ?? null) as string | null
       dealName.value = cleanDealName(data.pipedrive_deal_name)
       assessorName.value = data.assessor_name || ''
     } catch {
@@ -445,7 +447,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
   }
 
   return {
-    form, step, saving, submitting, loading, status, dealName, assessorName,
+    form, step, saving, submitting, loading, status, dealId, dealName, assessorName,
     load, saveStep, nextStep, prevStep, submit,
     toggleChip, selectOne, toggleFunil, selectPlano, addEtapa, addBonus,
     PLANOS,
