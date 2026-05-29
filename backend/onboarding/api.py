@@ -390,7 +390,7 @@ def toggle_rule_ack(request, id: int, rule_id: int):
 
 #* ---- Webhook Pipedrive (gravação de reunião) ----
 
-@router.post('/webhooks/pipedrive/activity', auth=None, response={200: dict, 401: Error})
+@router.post('/webhooks/pipedrive/activity/', auth=None, response={200: dict, 401: Error})
 def pipedrive_activity_webhook(request):
     """Dispara ao concluir uma atividade no Pipedrive. Se a atividade tem link do
     Meet e o deal carrega o folder ID do cliente, enfileira um RecordingJob pro
@@ -400,31 +400,39 @@ def pipedrive_activity_webhook(request):
     import json
     import re
     import logging
+    import hmac
     from decouple import config as _config
     from .models import GoogleAccountMap, RecordingJob
     from .pipedrive_services import get_activity, get_deal
 
     log = logging.getLogger(__name__)
 
-    # ── Basic auth (configurado no webhook do Pipedrive) ──
-    exp_user = _config('PIPEDRIVE_WEBHOOK_USER', default='')
-    exp_pass = _config('PIPEDRIVE_WEBHOOK_PASS', default='')
-    if exp_user or exp_pass:
-        header = request.headers.get('Authorization', '')
-        ok = False
-        if header.startswith('Basic '):
-            try:
-                u, _, p = base64.b64decode(header[6:]).decode().partition(':')
-                ok = (u == exp_user and p == exp_pass)
-            except Exception:
-                ok = False
-        if not ok:
-            return Status(401, Error(detail='Não autorizado'))
-
     try:
         payload = json.loads(request.body or b'{}')
     except Exception:
         payload = {}
+
+    # ── Auth: aceita Basic header OU token no body/query (Pipedrive automation
+    #    não permite headers customizados → token em "secret"). ──
+    exp_token = _config('PIPEDRIVE_WEBHOOK_TOKEN', default='')
+    exp_user = _config('PIPEDRIVE_WEBHOOK_USER', default='')
+    exp_pass = _config('PIPEDRIVE_WEBHOOK_PASS', default='')
+    if exp_token or exp_user or exp_pass:
+        ok = False
+        if exp_token:
+            got = (payload.get('secret') or request.GET.get('token') or '')
+            if isinstance(got, str) and hmac.compare_digest(got, exp_token):
+                ok = True
+        if not ok and (exp_user or exp_pass):
+            header = request.headers.get('Authorization', '')
+            if header.startswith('Basic '):
+                try:
+                    u, _, p = base64.b64decode(header[6:]).decode().partition(':')
+                    ok = (u == exp_user and p == exp_pass)
+                except Exception:
+                    ok = False
+        if not ok:
+            return Status(401, Error(detail='Não autorizado'))
     # Aceita payload aninhado (webhook nativo: {current: {...}}) ou flat
     # (automação do Pipedrive não permite nested). Merge raso: flat sobrescreve.
     obj = dict(payload.get('current') or payload.get('data') or {})
@@ -440,7 +448,13 @@ def pipedrive_activity_webhook(request):
     if not done:
         return Status(200, {'skipped': 'not done'})
 
-    activity_id = obj.get('id')
+    def _to_int(v):
+        try:
+            return int(v) if v not in (None, '', False) else None
+        except (TypeError, ValueError):
+            return None
+
+    activity_id = _to_int(obj.get('id'))
     if not activity_id:
         return Status(200, {'skipped': 'no activity id'})
 
@@ -455,8 +469,8 @@ def pipedrive_activity_webhook(request):
         log.warning(f'[webhook] falha get_activity {activity_id}: {e}')
         return Status(200, {'skipped': 'activity fetch failed'})
 
-    deal_id = activity.get('deal_id') or obj.get('deal_id')
-    owner_id = activity.get('user_id') or obj.get('user_id')
+    deal_id = _to_int(activity.get('deal_id') or obj.get('deal_id'))
+    owner_id = _to_int(activity.get('user_id') or obj.get('user_id'))
     meet_match = re.search(r'meet\.google\.com/([a-z]{3}-[a-z]{4}-[a-z]{3})', json.dumps(activity), re.I)
     if not (deal_id and owner_id and meet_match):
         return Status(200, {'skipped': 'sem deal/owner/link meet'})
