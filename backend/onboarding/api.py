@@ -388,6 +388,119 @@ def toggle_rule_ack(request, id: int, rule_id: int):
         return Status(200, {'checked': False})
     return Status(200, {'checked': True})
 
+#* ---- Webhook Pipedrive (gravação de reunião) ----
+
+@router.post('/webhooks/pipedrive/activity', auth=None, response={200: dict, 401: Error})
+def pipedrive_activity_webhook(request):
+    """Dispara ao concluir uma atividade no Pipedrive. Se a atividade tem link do
+    Meet e o deal carrega o folder ID do cliente, enfileira um RecordingJob pro
+    reconciliador achar+mover a gravação. Sempre responde 200 rápido (sem 5xx
+    pro Pipedrive não ficar reentregando)."""
+    import base64
+    import json
+    import re
+    import logging
+    from decouple import config as _config
+    from .models import GoogleAccountMap, RecordingJob
+    from .pipedrive_services import get_activity, get_deal
+
+    log = logging.getLogger(__name__)
+
+    # ── Basic auth (configurado no webhook do Pipedrive) ──
+    exp_user = _config('PIPEDRIVE_WEBHOOK_USER', default='')
+    exp_pass = _config('PIPEDRIVE_WEBHOOK_PASS', default='')
+    if exp_user or exp_pass:
+        header = request.headers.get('Authorization', '')
+        ok = False
+        if header.startswith('Basic '):
+            try:
+                u, _, p = base64.b64decode(header[6:]).decode().partition(':')
+                ok = (u == exp_user and p == exp_pass)
+            except Exception:
+                ok = False
+        if not ok:
+            return Status(401, Error(detail='Não autorizado'))
+
+    try:
+        payload = json.loads(request.body or b'{}')
+    except Exception:
+        payload = {}
+    # Aceita payload aninhado (webhook nativo: {current: {...}}) ou flat
+    # (automação do Pipedrive não permite nested). Merge raso: flat sobrescreve.
+    obj = dict(payload.get('current') or payload.get('data') or {})
+    for k, v in payload.items():
+        if k in ('current', 'data', 'previous', 'event', 'meta'):
+            continue
+        if v is not None and obj.get(k) in (None, '', 0, False):
+            obj[k] = v
+
+    done = obj.get('done')
+    if isinstance(done, str):
+        done = done.lower() in ('true', '1', 'yes')
+    if not done:
+        return Status(200, {'skipped': 'not done'})
+
+    activity_id = obj.get('id')
+    if not activity_id:
+        return Status(200, {'skipped': 'no activity id'})
+
+    # idempotência: 1 job por atividade
+    if RecordingJob.objects.filter(activity_id=activity_id).exists():
+        return Status(200, {'skipped': 'job exists'})
+
+    # detalhes completos da atividade (link Meet, deal, owner)
+    try:
+        activity = get_activity(activity_id)
+    except Exception as e:
+        log.warning(f'[webhook] falha get_activity {activity_id}: {e}')
+        return Status(200, {'skipped': 'activity fetch failed'})
+
+    deal_id = activity.get('deal_id') or obj.get('deal_id')
+    owner_id = activity.get('user_id') or obj.get('user_id')
+    meet_match = re.search(r'meet\.google\.com/([a-z]{3}-[a-z]{4}-[a-z]{3})', json.dumps(activity), re.I)
+    if not (deal_id and owner_id and meet_match):
+        return Status(200, {'skipped': 'sem deal/owner/link meet'})
+    meet_code = meet_match.group(1)
+
+    mapping = GoogleAccountMap.objects.filter(pipedrive_user_id=owner_id).first()
+    if not mapping:
+        log.warning(f'[webhook] sem GoogleAccountMap p/ pipedrive_user_id={owner_id}')
+        return Status(200, {'skipped': 'owner não mapeado'})
+
+    # folder ID do cliente vem de campo custom do deal
+    folder_field = _config('PIPEDRIVE_DEAL_FOLDER_FIELD', default='')
+    try:
+        deal = get_deal(deal_id)
+    except Exception as e:
+        log.warning(f'[webhook] falha get_deal {deal_id}: {e}')
+        return Status(200, {'skipped': 'deal fetch failed'})
+    raw_folder = (deal.get('custom_fields', {}) or {}).get(folder_field) if folder_field else None
+    dest_folder_id = _extract_folder_id(raw_folder)
+    if not dest_folder_id:
+        return Status(200, {'skipped': 'deal sem folder id'})
+
+    RecordingJob.objects.create(
+        deal_id=deal_id,
+        activity_id=activity_id,
+        meet_code=meet_code,
+        owner_google_email=mapping.google_email,
+        dest_folder_id=dest_folder_id,
+    )
+    return Status(200, {'queued': True, 'meet_code': meet_code})
+
+
+def _extract_folder_id(value) -> str:
+    """Aceita o folder ID cru ou uma URL do Drive e retorna só o ID."""
+    if not value:
+        return ''
+    if isinstance(value, dict):  # campo custom pode vir aninhado
+        value = value.get('value') or value.get('id') or ''
+    value = str(value).strip()
+    import re
+    m = re.search(r'/folders/([A-Za-z0-9_-]+)', value)
+    return m.group(1) if m else value
+
+
 #* ---- Onboarding (continue) ----
 
 @router.get('/{id}', response={200: OnboardingOut, 404: Error})

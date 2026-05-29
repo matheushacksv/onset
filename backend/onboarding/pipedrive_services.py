@@ -57,3 +57,25 @@ def create_note(deal_id: int, content: str):
     response.raise_for_status()
     return response.json()
 
+
+def get_activity(activity_id: int) -> dict:
+    '''Get an activity (carrega link do Meet, deal_id e owner)'''
+
+    response = httpx.get(
+        url=f'{BASE_URL}/v1/activities/{activity_id}',
+        headers=HEADERS,
+    )
+    response.raise_for_status()
+    return response.json().get('data', {})
+
+
+def get_deal(deal_id: int) -> dict:
+    '''Get a single deal (campos custom incluídos)'''
+
+    response = httpx.get(
+        url=f'{BASE_URL}/v2/deals/{deal_id}',
+        headers=HEADERS,
+    )
+    response.raise_for_status()
+    return response.json().get('data', {})
+
