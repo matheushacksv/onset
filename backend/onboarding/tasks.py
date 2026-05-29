@@ -1,6 +1,57 @@
 import asyncio
 
 
+def reconcile_recordings():
+    """Processa RecordingJobs pendentes: acha a gravação no Drive do assessor e
+    move pra pasta do cliente. Rodado periodicamente pelo Schedule do django-q.
+
+    Idempotente e restart-safe: cada tentativa é curta (respeita timeout=60s do
+    Q_CLUSTER). Gravação do Meet demora minutos a aparecer, então re-tenta a cada
+    execução até achar ou estourar RECORDING_JOB_TIMEOUT_MIN.
+    """
+    import logging
+    from datetime import timedelta
+    from decouple import config
+    from django.utils import timezone
+    from .models import RecordingJob
+    from . import google_services, pipedrive_services
+
+    log = logging.getLogger(__name__)
+    timeout_min = config('RECORDING_JOB_TIMEOUT_MIN', cast=int, default=120)
+    deadline = timezone.now() - timedelta(minutes=timeout_min)
+
+    for job in RecordingJob.objects.filter(status=RecordingJob.Status.PENDING):
+        job.attempts += 1
+        try:
+            file_id = google_services.find_recording(job.owner_google_email, job.meet_code)
+            if file_id:
+                google_services.move_file(job.owner_google_email, file_id, job.dest_folder_id)
+                job.file_id = file_id
+                job.status = RecordingJob.Status.DONE
+                job.error = ''
+                log.info(f'[reconcile] moved file={file_id} deal={job.deal_id}')
+                _notify(pipedrive_services, job.deal_id, 'Gravação da reunião arquivada na pasta do cliente.')
+            elif job.created_at < deadline:
+                job.status = RecordingJob.Status.FAILED
+                job.error = f'Gravação não encontrada após {timeout_min}min'
+                log.warning(f'[reconcile] timeout deal={job.deal_id} meet={job.meet_code}')
+                _notify(pipedrive_services, job.deal_id, f'⚠ Não localizei a gravação da reunião (Meet {job.meet_code}) após {timeout_min}min.')
+            # senão: continua pending, re-tenta na próxima rodada
+        except Exception as e:
+            job.error = str(e)
+            if job.created_at < deadline:
+                job.status = RecordingJob.Status.FAILED
+            log.exception(f'[reconcile] erro job={job.id}: {e}')
+        job.save()
+
+
+def _notify(pipedrive_services, deal_id: int, content: str):
+    try:
+        pipedrive_services.create_note(deal_id, content)
+    except Exception:
+        pass
+
+
 def prewarm_assistant_task(material_id: int):
     """Popula cache OpenAI das 3 seções do assistant. Não bloqueia uso da IA — só acelera primeira call."""
     import logging

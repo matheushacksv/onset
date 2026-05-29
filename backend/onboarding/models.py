@@ -198,3 +198,47 @@ class OnboardingRuleAck(models.Model):
         unique_together = ('rule', 'onboarding')
 
 
+class GoogleAccountMap(models.Model):
+    """De-para: usuário do Pipedrive (dono da atividade) → email Google Workspace.
+
+    Usado pra impersonar o assessor via domain-wide delegation e achar a
+    gravação no Drive dele. Emails Pipedrive e Google não batem garantido.
+    """
+    pipedrive_user_id = models.IntegerField(unique=True)
+    google_email      = models.EmailField()
+    name              = models.CharField(max_length=255, blank=True, default='')
+
+    def __str__(self):
+        return f'{self.pipedrive_user_id} → {self.google_email}'
+
+
+class RecordingJob(models.Model):
+    """Fila de gravações a arquivar. Criada pelo webhook do Pipedrive ao concluir
+    a atividade; processada pelo reconciliador agendado (django-q) que acha a
+    gravação no Drive do assessor e move pra pasta do cliente.
+    """
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pendente'
+        DONE    = 'done',    'Concluído'
+        FAILED  = 'failed',  'Falhou'
+
+    deal_id            = models.IntegerField()
+    activity_id        = models.IntegerField()
+    meet_code          = models.CharField(max_length=64)
+    owner_google_email = models.EmailField()
+    dest_folder_id     = models.CharField(max_length=128)
+    status             = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
+    attempts           = models.PositiveIntegerField(default=0)
+    file_id            = models.CharField(max_length=128, blank=True, default='')
+    error              = models.TextField(blank=True, default='')
+    created_at         = models.DateTimeField(auto_now_add=True)
+    updated_at         = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['status'])]
+
+    def __str__(self):
+        return f'RecordingJob deal={self.deal_id} meet={self.meet_code} [{self.status}]'
+
+
