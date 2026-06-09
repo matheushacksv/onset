@@ -16,7 +16,7 @@ uv run python manage.py migrate
 uv run python manage.py createsuperuser
 uv run python manage.py makemigrations <app>
 uv run python manage.py qcluster            # worker django-q (tasks assíncronas)
-uv run python manage.py build_knowledge     # popula PgVector com MDs do knowledge base (idempotente). Use --recreate para zerar.
+uv run python manage.py build_knowledge     # indexa MDs do knowledge base no PgVector. Incremental: insere nomes novos, pula existentes (skip_if_exists por NOME, não atualiza MD editado). Use --recreate p/ dropar e reindexar tudo.
 ```
 
 ### Frontend
@@ -33,7 +33,17 @@ git pull
 docker compose build backend worker frontend
 docker service update --force onset_backend onset_worker onset_frontend
 ```
-`build_knowledge` roda automaticamente em background no CMD do `backend/Dockerfile`.
+
+### Indexação do knowledge base (deploy)
+A indexação roda no service **`knowledge-builder`** (`docker-compose.yml`) — `build_knowledge` one-shot ao subir a stack. É **incremental** (`insert(skip_if_exists=True)`): adiciona só MDs com nome novo, **não recria** e **não atualiza** MD editado (skip é por nome de arquivo). O `docker service update --force` acima toca só backend/worker/frontend — **NÃO** re-dispara o knowledge-builder. (O CMD do `backend/Dockerfile` faz migrate/createcachetable/collectstatic/gunicorn — **não** roda build_knowledge.)
+
+**Reindex completo** (só quando o conteúdo dos MDs muda) é manual e sob demanda. Rodar em baixo tráfego: o `--recreate` dropa a tabela e a deixa **vazia** durante o reindex (geração concorrente sai degradada).
+```bash
+# Swarm (prod): exec no container backend já rodando
+docker exec $(docker ps -q -f name=onset_backend) uv run python manage.py build_knowledge --recreate
+# Compose: container one-off (não altera o service)
+docker compose run --rm knowledge-builder uv run python manage.py build_knowledge --recreate
+```
 
 ## Architecture
 
@@ -51,7 +61,7 @@ docker service update --force onset_backend onset_worker onset_frontend
 ### Módulo `onboarding`
 - **Formulário multi-step** persistido em `OnboardingForm`
 - **Geração IA de material** (`GeneratedMaterial`): 3 agents paralelos (CRM, Closing, Qualification) via `agents/workflow.py` rodando com Agno + `gpt-5.4-nano`. Disparado por `POST /{id}/generate` → `tasks.generate_materials_task` (django-q)
-- **Knowledge base** PgVector populado por `management/commands/build_knowledge.py` a partir de MDs. Runtime usa singleton `get_knowledge()` (só conecta, não recria)
+- **Knowledge base** PgVector populado por `management/commands/build_knowledge.py` a partir de MDs (baixados do S3/MinIO, prefixo `knowledge/`). Indexação incremental no deploy via service `knowledge-builder` (ver seção Deploy). Runtime usa singleton `get_knowledge()` (só conecta, não recria) com `max_results=5` (docs injetados por agent via `add_knowledge_to_context`)
 - **Editor manual** do material — usuário edita JSON estruturado por aba (CRM funis/etapas/cadências, Closing objeções/scripts, Qualification fluxo WhatsApp/pitch)
 - **Assistente IA no editor** (`agents/assistant.py`): `AssistantSession` por turno com tool-calling agent. 3 conjuntos de tools mutam `self.draft` (closure) e persistem ao final. Endpoint `POST /materials/assist`. Prewarm fire-and-forget via `POST /materials/assist/prepare` (django-q, debounce 10min em cache). `build_warm_agent()` no prewarm = sem tools/knowledge.
 - Pipedrive integration em `pipedrive_services.py` (sync de funis/etapas)

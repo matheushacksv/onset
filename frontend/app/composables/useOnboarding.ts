@@ -108,20 +108,8 @@ export interface OnboardingData {
   posvenda_etapas: FunilEtapa[]
   custom_fluxo: string
   custom_etapas: FunilEtapa[]
-  // Step 4 — Time
-  sdr: string
-  closer: string
-  especialista: string
-  empresa_scripts: string
-  perfil_operador: string
+  // Step 4 — Fechamento
   etapas_fechamento: ClosingStep[]
-  fech_especifico: string
-  tipo_reuniao: string
-  passagem: string
-  apresenta_preco: string
-  metodo: string[]
-  condicao_especial: string
-  objecoes_fecha: string
   // Step 5 — Scripts
   wpp_perguntas: string
   wpp_criterio: string
@@ -145,6 +133,11 @@ export interface OnboardingData {
   decisivo_prospeccao: string[]
   experiencia_reuniao: string[]
   indicador_sucesso: string
+  fonte_conteudo_outro: string
+  como_descobriu_outro: string
+  decisivo_prospeccao_outro: string
+  experiencia_reuniao_outro: string
+  indicador_sucesso_outro: string
 }
 
 const ETAPAS_PADRAO: Record<string, FunilEtapa[]> = {
@@ -245,11 +238,7 @@ function emptyForm(): OnboardingData {
     posvenda_obs: '',
     posvenda_etapas: JSON.parse(JSON.stringify(ETAPAS_PADRAO.posvenda)),
     custom_fluxo: '', custom_etapas: [],
-    sdr: '', closer: '', especialista: '', empresa_scripts: '',
-    perfil_operador: '',
     etapas_fechamento: JSON.parse(JSON.stringify(ETAPAS_FECHAMENTO_PADRAO)),
-    fech_especifico: '', tipo_reuniao: '', passagem: '',
-    apresenta_preco: '', metodo: [], condicao_especial: '', objecoes_fecha: '',
     wpp_perguntas: '', wpp_criterio: '', wpp_desqualifica: '', wpp_proximo: '',
     lig_pitch: '', lig_perguntas: '', lig_objecoes: '',
     fech_estrutura: '', particularidades: '', tem_ref: '', ref_cliente: '',
@@ -257,6 +246,89 @@ function emptyForm(): OnboardingData {
     assessorias: [], cs_encontros: [], bonus_encontros: [],
     fonte_conteudo: '', como_descobriu: '',
     decisivo_prospeccao: [], experiencia_reuniao: [], indicador_sucesso: '',
+    fonte_conteudo_outro: '', como_descobriu_outro: '',
+    decisivo_prospeccao_outro: '', experiencia_reuniao_outro: '', indicador_sucesso_outro: '',
+  }
+}
+
+export function generateFakeForm(): OnboardingData {
+  return {
+    nome_empresa: 'Tech Solutions Ltda',
+    nicho: 'Consultoria em Marketing Digital',
+    produto: 'Gestão de tráfego pago e automação de vendas para e-commerces de moda, com foco em ROAS e escalabilidade de campanhas Meta Ads e Google Ads.',
+    tipo_venda: 'B2B — Empresa para Empresa',
+    ticket: 'R$ 4.500',
+    modelo_venda: 'Mensalidade recorrente',
+    como_vende: 'Indicação e prospecção ativa via LinkedIn, sem processo de cadência definido atualmente. Leads vêm também de formulário no site e tráfego orgânico.',
+    crosssell: 'Migração de plano Básico para Enterprise após 3 meses de resultado comprovado, incluindo funil completo de CRM',
+    vendas_atual: '5',
+    vendas_meta: '15',
+    fat_atual: 'R$ 22.500',
+    fat_meta: 'R$ 67.500',
+    volume_leads: '80 leads/mês',
+    funcionarios: '6 funcionários',
+    entrada_crm: 'WhatsApp Business + formulário de lead dos anúncios Meta Ads + landing page',
+    integracoes: 'API Oficial Meta, Google Ads API, Calendly, Chatbear, n8n',
+    followup_estruturado: 'Parcialmente',
+    gravacoes: 'Sim, tenho gravações',
+    perfil_lead: 'Proprietários de e-commerces de moda que faturam entre R$ 50k e R$ 200k por mês, com experiência em tráfego pago mas sem escala previsível',
+    dor_principal: 'Baixo ROAS (1.8–2.5), dificuldade em escalar campanhas sem aumentar CAC, falta de dados claros para decisão de investimento em mídia',
+    objecoes: 'Já tentei outra consultoria e não funcionou / Preciso pensar e analisar o orçamento / Está caro para o que estou faturando hoje',
+    tom: ['Direto e objetivo'],
+    caso_sucesso: 'E-commerce de moda feminina estava estagnado em R$ 45k mensais com ROAS de 1.8. Em 90 dias otimizamos catálogo e campanhas, alcançando R$ 112k com ROAS de 4.2',
+    gatilho_urgencia: 'O algoritmo das plataformas de anúncios penaliza contas com baixo histórico de conversão. Cada dia sem otimização aumenta o CAC de forma irreversível a curto prazo',
+    funis: ['trafego', 'prospeccao'],
+    trafego_isca: 'Raio-X gratuito de 30 minutos das contas de anúncio com diagnóstico de gargalos',
+    trafego_plataforma: 'Meta Ads + Google Ads',
+    trafego_dias: '7 dias',
+    trafego_bot: 'Chatbear faz 2 perguntas de qualificação no Messenger: "Qual seu faturamento mensal?" e "Já investe em tráfego pago?". Só cai no Pipedrive quem responde ambas.',
+    trafego_etapas: JSON.parse(JSON.stringify(ETAPAS_PADRAO.trafego)),
+    prosp_perfil: 'E-commerces de moda (vestuário feminino, masculino, acessórios) com faturamento entre R$ 50k e R$ 200k mensais, que já investem em tráfego pago mas sem gestão profissional',
+    prosp_dias: '5 dias',
+    prosp_canais: ['WhatsApp', 'LinkedIn'],
+    prosp_fonte: 'Apollo.io + Google Maps + lista segmentada da base do LinkedIn Sales Navigator',
+    prosp_etapas: JSON.parse(JSON.stringify(ETAPAS_PADRAO.prospeccao)),
+    social_plat: '',
+    social_dias: '',
+    social_etapas: JSON.parse(JSON.stringify(ETAPAS_PADRAO.social)),
+    carteira_quem: '',
+    cart_freq: '',
+    carteira_etapas: JSON.parse(JSON.stringify(ETAPAS_PADRAO.carteira)),
+    posvenda_obs: '',
+    posvenda_etapas: JSON.parse(JSON.stringify(ETAPAS_PADRAO.posvenda)),
+    custom_fluxo: '',
+    custom_etapas: [],
+    etapas_fechamento: JSON.parse(JSON.stringify(ETAPAS_FECHAMENTO_PADRAO)),
+    wpp_perguntas: '1. Qual seu faturamento médio mensal com o e-commerce?\n2. Você já investe em tráfego pago ou quer começar do zero?\n3. Qual seu maior desafio hoje com as vendas online?\n4. Quanto você está disposto a investir mensalmente em tráfego?',
+    wpp_criterio: 'Faturamento acima de R$ 50k/mês + já investe em tráfego pago OU tem verba mínima de R$ 3k para começar',
+    wpp_desqualifica: 'Faturamento abaixo de R$ 20k/mês ou sem interesse/verba para tráfego pago',
+    wpp_proximo: 'Agendar reunião',
+    lig_pitch: 'Alô, [Nome]? Aqui é [SDR], da Tech Solutions. Você pediu um diagnóstico de tráfego pelo nosso site, certo? Posso fazer umas perguntas rápidas para entender melhor seu momento?',
+    lig_perguntas: '1. Como estão os resultados dos seus anúncios hoje?\n2. Qual o produto que mais vende atualmente?\n3. Você mesmo gerencia o tráfego ou tem agência?\n4. Qual seria o cenário ideal para você em 90 dias?',
+    lig_objecoes: 'Não tenho tempo agora → Entendo, podemos marcar um horário melhor para você. 15 minutos é suficiente?\nJá tenho agência → Que legal! E qual o ROAS que estão te entregando? Posso fazer uma comparação rápida.\nEstá caro → Comparado a continuar perdendo [X] por mês em anúncios mal otimizados, o investimento se paga em quanto tempo?',
+    fech_estrutura: '',
+    particularidades: '',
+    tem_ref: '',
+    ref_cliente: '',
+    plano_selecionado: 'fast',
+    assessorias: [
+      { date: '', time: '', responsible: 'Assessor' },
+      { date: '', time: '', responsible: 'Assessor' },
+      { date: '', time: '', responsible: 'Assessor' },
+      { date: '', time: '', responsible: 'Assessor' },
+    ],
+    cs_encontros: [],
+    bonus_encontros: [],
+    fonte_conteudo: 'YouTube',
+    como_descobriu: 'Um amigo ou parceiro recomendou',
+    decisivo_prospeccao: ['A abordagem foi 100% personalizada — ele provou que estudou meu negócio antes de entrar em contato'],
+    experiencia_reuniao: ['O especialista identificou um gargalo que eu nem sabia que existia'],
+    indicador_sucesso: 'ROI — o aumento de faturamento pagou a assessoria e gerou lucro real no caixa',
+    fonte_conteudo_outro: '',
+    como_descobriu_outro: '',
+    decisivo_prospeccao_outro: '',
+    experiencia_reuniao_outro: '',
+    indicador_sucesso_outro: '',
   }
 }
 
@@ -446,13 +518,33 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     form.value.bonus_encontros.push({ label: '', date: '', time: '', responsible: '' })
   }
 
+  const moveInList = <T,>(list: T[], i: number, dir: -1 | 1) => {
+    const j = i + dir
+    if (j < 0 || j >= list.length) return
+    ;[list[i], list[j]] = [list[j], list[i]]
+  }
+
+  const suggestingScripts = ref(false)
+
+  const suggestScripts = async () => {
+    suggestingScripts.value = true
+    try {
+      const data: Record<string, string> = await fetchAuth(`/api/onboarding/${resolvedId}/suggest-scripts`, { method: 'POST' })
+      for (const key of ['wpp_perguntas', 'wpp_criterio', 'wpp_desqualifica', 'wpp_proximo', 'lig_pitch', 'lig_perguntas', 'lig_objecoes']) {
+        if (data[key] !== undefined) (form.value as any)[key] = data[key]
+      }
+    } finally {
+      suggestingScripts.value = false
+    }
+  }
+
   return {
     form, step, saving, submitting, loading, status, dealId, dealName, assessorName,
     load, saveStep, nextStep, prevStep, submit,
-    toggleChip, selectOne, toggleFunil, selectPlano, addEtapa, addBonus,
-    PLANOS,
+    toggleChip, selectOne, toggleFunil, selectPlano, addEtapa, addBonus, moveInList,
+    PLANOS, suggestingScripts,
     materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
     createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
-    prepareAssistant, publishMaterial,
+    prepareAssistant, publishMaterial, suggestScripts,
   }
 }

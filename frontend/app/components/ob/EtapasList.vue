@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p class="text-xs text-neutral-600 mb-2">Desmarque etapas que não se aplicam. Edite a ação de cada etapa se necessário.</p>
+    <p class="text-xs text-neutral-600 mb-2">Desmarque etapas que não se aplicam. Edite a ação de cada etapa se necessário. Use ↑/↓ para reordenar.</p>
     <div class="space-y-1.5">
       <div
         v-for="(etapa, i) in etapas"
@@ -24,6 +24,20 @@
           :disabled="!etapa.active"
         />
         <span v-if="etapa.optional" class="text-xs text-white/20 shrink-0">opcional</span>
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button
+            class="w-5 h-5 flex items-center justify-center rounded text-sm leading-none text-white/30 hover:text-white/70 hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/30 transition-all"
+            :disabled="i === 0"
+            title="Mover para cima"
+            @click="emit('move', i, -1)"
+          >↑</button>
+          <button
+            class="w-5 h-5 flex items-center justify-center rounded text-sm leading-none text-white/30 hover:text-white/70 hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/30 transition-all"
+            :disabled="i === etapas.length - 1"
+            title="Mover para baixo"
+            @click="emit('move', i, 1)"
+          >↓</button>
+        </div>
       </div>
     </div>
     <button
@@ -38,5 +52,5 @@
 <script setup lang="ts">
 import type { FunilEtapa } from '~/composables/useOnboarding'
 defineProps<{ etapas: FunilEtapa[] }>()
-const emit = defineEmits<{ add: [] }>()
+const emit = defineEmits<{ add: []; move: [index: number, dir: -1 | 1] }>()
 </script>

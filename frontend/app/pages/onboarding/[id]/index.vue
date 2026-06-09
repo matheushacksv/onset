@@ -79,7 +79,10 @@
             </ObField>
           </div>
           <ObField label="O que vende ou entrega" required hint="Descreva como explicaria para o lead">
-            <textarea v-model="form.produto" placeholder="Ex: Assessoria jurídica para trabalhadores com Auxílio-Doença negado pelo INSS..." v-bind="textareaClass" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.produto" placeholder="Ex: Assessoria jurídica para trabalhadores com Auxílio-Doença negado pelo INSS..." v-bind="textareaClass" class="flex-1" />
+              <ObMicButton v-model="form.produto" />
+            </div>
           </ObField>
           <ObField label="Tipo de venda">
             <ObChips :options="['B2B — Empresa para Empresa','B2C — Empresa para Consumidor']" :value="[form.tipo_venda]" single @toggle="(v) => form.tipo_venda = form.tipo_venda === v ? '' : v" />
@@ -104,7 +107,10 @@
             </ObField>
           </div>
           <ObField label="Como vende hoje" hint="Mesmo que seja informal ou sem processo definido">
-            <textarea v-model="form.como_vende" placeholder="Ex: A doutora atende quem aparece, não existe prospecção..." v-bind="textareaClass" style="min-height:58px" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.como_vende" placeholder="Ex: A doutora atende quem aparece, não existe prospecção..." v-bind="textareaClass" style="min-height:58px;line-height:1.6" class="flex-1" />
+              <ObMicButton v-model="form.como_vende" />
+            </div>
           </ObField>
           <ObField label="Cross-sell ou up-sell?">
             <input v-model="form.crosssell" placeholder="Ex: Trabalhista → Previdenciário. Ticket sobe de R$1.500 para R$3.200." v-bind="inputClass" />
@@ -157,10 +163,16 @@
             <input v-model="form.perfil_lead" placeholder="Ex: Trabalhador CLT, 30 a 60 anos, afastado por doença, INSS negado ou em análise" v-bind="inputClass" />
           </ObField>
           <ObField label="Dor principal" required hint="O que ele sente antes de entrar em contato. Quanto mais específico, melhor.">
-            <textarea v-model="form.dor_principal" placeholder="Ex: Está sem renda há meses. INSS negou. Não sabe o que fazer e tem medo de perder o prazo do recurso." v-bind="textareaClass" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.dor_principal" placeholder="Ex: Está sem renda há meses. INSS negou. Não sabe o que fazer e tem medo de perder o prazo do recurso." v-bind="textareaClass" class="flex-1" />
+              <ObMicButton v-model="form.dor_principal" />
+            </div>
           </ObField>
           <ObField label="Objeções mais comuns">
-            <textarea v-model="form.objecoes" placeholder="Ex: Não tenho dinheiro / Vou tentar sozinho / Está caro / Preciso pensar" v-bind="textareaClass" style="min-height:58px" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.objecoes" placeholder="Ex: Não tenho dinheiro / Vou tentar sozinho / Está caro / Preciso pensar" v-bind="textareaClass" style="min-height:58px;line-height:1.6" class="flex-1" />
+              <ObMicButton v-model="form.objecoes" />
+            </div>
           </ObField>
         </ObCard>
 
@@ -169,10 +181,16 @@
             <ObChips :options="['Formal e técnico','Direto e objetivo','Empático e próximo','Urgência e pressão','Educativo e didático','Motivacional']" :value="form.tom" @toggle="(v) => toggleChip(form.tom, v)" />
           </ObField>
           <ObField label="Caso de sucesso para os scripts" required hint="Um resultado real e concreto.">
-            <textarea v-model="form.caso_sucesso" placeholder="Ex: Cliente teve INSS negado por 8 meses. Entramos com recurso e em 4 meses ela passou a receber R$ 1.518 por mês." v-bind="textareaClass" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.caso_sucesso" placeholder="Ex: Cliente teve INSS negado por 8 meses. Entramos com recurso e em 4 meses ela passou a receber R$ 1.518 por mês." v-bind="textareaClass" class="flex-1" />
+              <ObMicButton v-model="form.caso_sucesso" />
+            </div>
           </ObField>
           <ObField label="Gatilho de urgência do nicho" required hint="O que acontece de ruim se o lead não agir agora">
-            <textarea v-model="form.gatilho_urgencia" placeholder="Ex: O prazo para recurso administrativo é 30 dias após a negativa. Depois só via judicial — mais lento e mais caro." v-bind="textareaClass" style="min-height:58px" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.gatilho_urgencia" placeholder="Ex: O prazo para recurso administrativo é 30 dias após a negativa. Depois só via judicial — mais lento e mais caro." v-bind="textareaClass" style="min-height:58px;line-height:1.6" class="flex-1" />
+              <ObMicButton v-model="form.gatilho_urgencia" />
+            </div>
           </ObField>
         </ObCard>
       </div>
@@ -190,7 +208,7 @@
         <!-- Tráfego pago -->
         <template v-if="form.funis.includes('trafego')">
           <ObFunilBloco title="Tráfego Pago — Etapas do Pipedrive" badge="Padrão">
-            <ObEtapasList :etapas="form.trafego_etapas" @add="addEtapa('trafego')" />
+            <ObEtapasList :etapas="form.trafego_etapas" @add="addEtapa('trafego')" @move="(i, dir) => moveInList(form.trafego_etapas, i, dir)" />
             <div class="grid grid-cols-2 gap-4 mt-4">
               <ObField label="Isca ou oferta de entrada">
                 <input v-model="form.trafego_isca" placeholder="Ex: Consulta gratuita, cálculo grátis, ebook" v-bind="inputClass" />
@@ -211,7 +229,7 @@
         <!-- Prospecção ativa -->
         <template v-if="form.funis.includes('prospeccao')">
           <ObFunilBloco title="Prospecção Ativa — Etapas do Pipedrive" badge="Padrão">
-            <ObEtapasList :etapas="form.prosp_etapas" @add="addEtapa('prosp')" />
+            <ObEtapasList :etapas="form.prosp_etapas" @add="addEtapa('prosp')" @move="(i, dir) => moveInList(form.prosp_etapas, i, dir)" />
             <div class="grid grid-cols-2 gap-4 mt-4">
               <ObField label="Perfil a prospectar">
                 <input v-model="form.prosp_perfil" placeholder="Ex: Advogados trabalhistas com escritório próprio" v-bind="inputClass" />
@@ -232,7 +250,7 @@
         <!-- Social Selling -->
         <template v-if="form.funis.includes('social')">
           <ObFunilBloco title="Social Selling — Etapas do Pipedrive" badge="Padrão">
-            <ObEtapasList :etapas="form.social_etapas" @add="addEtapa('social')" />
+            <ObEtapasList :etapas="form.social_etapas" @add="addEtapa('social')" @move="(i, dir) => moveInList(form.social_etapas, i, dir)" />
             <div class="grid grid-cols-2 gap-4 mt-4">
               <ObField label="Plataforma principal">
                 <ObChips :options="['Instagram','LinkedIn','Ambos']" :value="[form.social_plat]" single @toggle="(v) => form.social_plat = form.social_plat === v ? '' : v" />
@@ -247,7 +265,7 @@
         <!-- Carteira / Reativação -->
         <template v-if="form.funis.includes('carteira')">
           <ObFunilBloco title="Carteira / Reativação" badge="Padrão">
-            <ObEtapasList :etapas="form.carteira_etapas" @add="addEtapa('carteira')" />
+            <ObEtapasList :etapas="form.carteira_etapas" @add="addEtapa('carteira')" @move="(i, dir) => moveInList(form.carteira_etapas, i, dir)" />
             <div class="grid grid-cols-2 gap-4 mt-4">
               <ObField label="Quem entra nesta carteira">
                 <input v-model="form.carteira_quem" placeholder="Ex: Leads perdidos há mais de 60 dias" v-bind="inputClass" />
@@ -262,7 +280,7 @@
         <!-- Pós-venda -->
         <template v-if="form.funis.includes('posvenda')">
           <ObFunilBloco title="Pós-venda / Indicação" badge="Altamente personalizável">
-            <ObEtapasList :etapas="form.posvenda_etapas" @add="addEtapa('posvenda')" />
+            <ObEtapasList :etapas="form.posvenda_etapas" @add="addEtapa('posvenda')" @move="(i, dir) => moveInList(form.posvenda_etapas, i, dir)" />
             <ObField label="Particularidades do pós-venda deste cliente" class="mt-4">
               <textarea v-model="form.posvenda_obs" placeholder="Ex: Tem programa de indicação estruturado com desconto de 10% para quem indica." v-bind="textareaClass" style="min-height:56px" />
             </ObField>
@@ -275,107 +293,119 @@
             <ObField label="Descreva o fluxo completo de entrada do lead">
               <textarea v-model="form.custom_fluxo" placeholder="Ex: Lead vê anúncio → bot faz 3 perguntas → se qualificado, agenda via Calendly → cai no Pipedrive como reunião agendada" v-bind="textareaClass" style="min-height:64px" />
             </ObField>
-            <ObEtapasList :etapas="form.custom_etapas" @add="addEtapa('custom')" class="mt-4" />
+            <ObEtapasList :etapas="form.custom_etapas" @add="addEtapa('custom')" @move="(i, dir) => moveInList(form.custom_etapas, i, dir)" class="mt-4" />
           </ObFunilBloco>
         </template>
       </div>
 
       <!-- ══════ STEP 4 — TIME ══════ -->
       <div v-show="step === 4">
-        <ObStepHeader tag="Etapa 4 de 8" title="Time e operação" desc="Quem executa, perfil do operador e como a reunião de fechamento funciona." />
-
-        <ObCard title="Time comercial">
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <ObField label="SDR (quem prospecta)" required>
-              <input v-model="form.sdr" placeholder="Ex: Tharik e Renato / A própria advogada" v-bind="inputClass" />
-            </ObField>
-            <ObField label="Closer (quem fecha)" required>
-              <input v-model="form.closer" placeholder="Ex: Dr. Leonardo / Amanda" v-bind="inputClass" />
-            </ObField>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <ObField label="Especialista citado nos scripts">
-              <input v-model="form.especialista" placeholder="Ex: Dra. Anna Béda" v-bind="inputClass" />
-            </ObField>
-            <ObField label="Nome da empresa nos scripts">
-              <input v-model="form.empresa_scripts" placeholder="Ex: Béda Advocacia" v-bind="inputClass" />
-            </ObField>
-          </div>
-        </ObCard>
-
-        <ObCard title="Perfil do operador do CRM">
-          <p class="text-xs text-neutral-500 mb-3">Isso define a linguagem das instruções operacionais geradas.</p>
-          <div class="space-y-2">
-            <ObOptRow
-              v-for="opt in OPCOES_OPERADOR"
-              :key="opt"
-              :text="opt"
-              :selected="form.perfil_operador === opt"
-              @click="form.perfil_operador = form.perfil_operador === opt ? '' : opt"
-            />
-          </div>
-        </ObCard>
+        <ObStepHeader tag="Etapa 4 de 8" title="Fechamento" desc="Estrutura da reunião de fechamento. Desmarque etapas que não se aplicam e reordene conforme o fluxo do cliente." />
 
         <ObCard title="Estrutura da reunião de fechamento">
-          <p class="text-xs text-neutral-500 mb-3">Etapas padrão já marcadas. Desmarque o que não se aplica.</p>
-          <div class="space-y-2 mb-4">
-            <button
-              v-for="etapa in form.etapas_fechamento"
+          <p class="text-xs text-neutral-500 mb-3">Etapas padrão já marcadas. Desmarque o que não se aplica e use ↑/↓ para reordenar.</p>
+          <div class="space-y-2">
+            <div
+              v-for="(etapa, i) in form.etapas_fechamento"
               :key="etapa.num"
               class="w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left"
               :class="etapa.active
                 ? 'border-white/10 bg-white/[0.03]'
                 : 'border-white/[0.04] bg-transparent opacity-40'"
-              @click="etapa.active = !etapa.active"
             >
-              <div
+              <button
                 class="w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all text-xs font-black"
                 :class="etapa.active ? 'bg-white text-neutral-900' : 'border border-white/20'"
+                @click="etapa.active = !etapa.active"
               >
                 <span v-if="etapa.active">✓</span>
-              </div>
+              </button>
               <span class="text-xs text-white/40 font-mono shrink-0">{{ etapa.num }}</span>
-              <span class="text-sm" :class="etapa.active ? 'text-white/80' : 'text-white/30'">{{ etapa.text }}</span>
-            </button>
-          </div>
-          <ObField label="O que foge do padrão neste cliente?" hint="Só preencha se houver algo específico que muda a estrutura acima">
-            <textarea v-model="form.fech_especifico" placeholder="Ex: Neste cliente o closer apresenta uma proposta visual em PDF antes de falar o preço." v-bind="textareaClass" style="min-height:64px" />
-          </ObField>
-          <div class="border-t border-white/[0.06] my-5" />
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <ObField label="Tipo de reunião">
-              <ObChips :options="['Google Meet / Zoom','Presencial','Ligação','Fecha no WhatsApp']" :value="[form.tipo_reuniao]" single @toggle="(v) => form.tipo_reuniao = form.tipo_reuniao === v ? '' : v" />
-            </ObField>
-            <ObField label="Passagem SDR → closer">
-              <ObChips :options="['Agenda reunião','Transfere na hora','Mesma pessoa']" :value="[form.passagem]" single @toggle="(v) => form.passagem = form.passagem === v ? '' : v" />
-            </ObField>
-          </div>
-          <div class="grid grid-cols-2 gap-4 mb-4">
-            <ObField label="Como apresenta o preço">
-              <ObChips :options="['Fala e faz silêncio','Ancora alto antes','Dois pacotes','Pergunta orçamento antes']" :value="[form.apresenta_preco]" single @toggle="(v) => form.apresenta_preco = form.apresenta_preco === v ? '' : v" />
-            </ObField>
-            <ObField label="Método de fechamento">
-              <ObChips :options="['SPIN Selling','Diagnóstico consultivo','Apresentação direta','Demo do produto']" :value="form.metodo" @toggle="(v) => toggleChip(form.metodo, v)" />
-            </ObField>
-          </div>
-          <div class="grid grid-cols-2 gap-4">
-            <ObField label="Condição especial para fechar na hora">
-              <input v-model="form.condicao_especial" placeholder="Ex: Desconto de 15% se fechar hoje" v-bind="inputClass" />
-            </ObField>
-            <ObField label="Objeções específicas do fechamento">
-              <input v-model="form.objecoes_fecha" placeholder="Ex: Vou pensar / Preciso falar com o sócio" v-bind="inputClass" />
-            </ObField>
+              <button
+                class="flex-1 text-left text-sm min-w-0 truncate"
+                :class="etapa.active ? 'text-white/80' : 'text-white/30'"
+                @click="etapa.active = !etapa.active"
+              >{{ etapa.text }}</button>
+              <div class="flex items-center gap-0.5 shrink-0">
+                <button
+                  class="w-6 h-6 flex items-center justify-center rounded text-sm leading-none text-white/30 hover:text-white/70 hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/30 transition-all"
+                  :disabled="i === 0"
+                  title="Mover para cima"
+                  @click="moveInList(form.etapas_fechamento, i, -1)"
+                >↑</button>
+                <button
+                  class="w-6 h-6 flex items-center justify-center rounded text-sm leading-none text-white/30 hover:text-white/70 hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/30 transition-all"
+                  :disabled="i === form.etapas_fechamento.length - 1"
+                  title="Mover para baixo"
+                  @click="moveInList(form.etapas_fechamento, i, 1)"
+                >↓</button>
+              </div>
+            </div>
           </div>
         </ObCard>
+
+        <div class="mb-4">
+          <button
+            type="button"
+            class="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] hover:bg-white/[0.05] transition-all"
+            @click="showFechExtra = !showFechExtra"
+          >
+            <span class="flex items-center gap-2.5">
+              <span class="text-sm font-medium text-white/80">Mais opções</span>
+              <span class="text-[10px] uppercase tracking-widest font-semibold text-white/40 px-2 py-0.5 rounded-full bg-white/5 ring-1 ring-white/10">Opcional</span>
+            </span>
+            <svg class="w-4 h-4 text-white/40 transition-transform" :class="showFechExtra ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <div v-show="showFechExtra" class="mt-4">
+            <ObCard title="Fechamento — detalhes específicos">
+              <ObField label="Estrutura da reunião de fechamento" hint="Deixe em branco para usar o padrão Enriquecedor.">
+                <textarea v-model="form.fech_estrutura" placeholder="Ex:&#10;1. Rapport (2 min)&#10;2. Recapitulação do SDR&#10;3. Diagnóstico com perguntas" v-bind="textareaClass" style="min-height:100px" />
+              </ObField>
+              <ObField label="Particularidades operacionais" hint="Regras de negócio, restrições legais, critério especial..." class="mt-4">
+                <textarea v-model="form.particularidades" placeholder="Ex: Só entra no Pipedrive quem confirmar no chatbot. Leads de indicação vão direto pro closer sem cadência." v-bind="textareaClass" style="min-height:58px" />
+              </ObField>
+            </ObCard>
+
+            <ObCard title="Referência de material existente">
+              <ObField label="Já existe algum material que a IA pode tomar como referência?" hint="Se sim, indique o cliente.">
+                <ObChips :options="['Sim, tenho','Não tenho']" :value="[form.tem_ref]" single @toggle="(v) => form.tem_ref = form.tem_ref === v ? '' : v" />
+              </ObField>
+              <div v-if="form.tem_ref === 'Sim, tenho'" class="mt-4">
+                <ObField label="De qual cliente?">
+                  <input v-model="form.ref_cliente" placeholder="Ex: Béda Advocacia, CBC Contabilidade..." v-bind="inputClass" />
+                </ObField>
+              </div>
+            </ObCard>
+          </div>
+        </div>
       </div>
 
       <!-- ══════ STEP 5 — SCRIPTS ══════ -->
       <div v-show="step === 5">
-        <ObStepHeader tag="Etapa 5 de 8" title="Scripts avançados" desc="Só preencha o que é específico deste cliente. O que for padrão já está no sistema." />
+        <div class="flex items-start justify-between gap-4">
+          <ObStepHeader tag="Etapa 5 de 8" title="Scripts avançados" desc="Só preencha o que é específico deste cliente. O que for padrão já está no sistema." class="min-w-0" />
+          <button
+            class="shrink-0 mt-1 w-8 h-8 flex items-center justify-center rounded-full text-base hover:bg-white/10 transition-all disabled:opacity-40"
+            :disabled="suggestingScripts"
+            title="Preencher campos com IA baseado nas respostas anteriores (GPTCBA)"
+            @click="suggestScripts"
+          >
+            <svg v-if="suggestingScripts" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <span v-else>✨</span>
+          </button>
+        </div>
 
         <ObCard title="Qualificação — WhatsApp">
           <ObField label="Perguntas de qualificação via WhatsApp" required hint="Liste na ordem. A IA transforma em mensagens naturais de conversa.">
-            <textarea v-model="form.wpp_perguntas" placeholder="1. Você ainda trabalha na empresa ou já foi demitido?&#10;2. Quanto tempo trabalhou lá?&#10;3. Recebia horas extras não pagas?" v-bind="textareaClass" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.wpp_perguntas" placeholder="1. Você ainda trabalha na empresa ou já foi demitido?&#10;2. Quanto tempo trabalhou lá?&#10;3. Recebia horas extras não pagas?" v-bind="textareaClass" class="flex-1" />
+              <ObMicButton v-model="form.wpp_perguntas" />
+            </div>
           </ObField>
           <div class="grid grid-cols-2 gap-4 mt-4">
             <ObField label="Critério mínimo para avançar">
@@ -392,34 +422,23 @@
 
         <ObCard title="Qualificação — Ligação">
           <ObField label="Pitch de abertura da ligação" required hint="O que o SDR fala nos primeiros 10 segundos para não perder o lead">
-            <textarea v-model="form.lig_pitch" placeholder="Ex: Alô, [nome]? Aqui é o [nome], da [empresa]. Você entrou em contato sobre [assunto], lembra? Posso fazer algumas perguntas rápidas?" v-bind="textareaClass" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.lig_pitch" placeholder="Ex: Alô, [nome]? Aqui é o [nome], da [empresa]. Você entrou em contato sobre [assunto], lembra? Posso fazer algumas perguntas rápidas?" v-bind="textareaClass" class="flex-1" />
+              <ObMicButton v-model="form.lig_pitch" />
+            </div>
           </ObField>
           <ObField label="Perguntas de qualificação na ligação" required class="mt-4">
-            <textarea v-model="form.lig_perguntas" placeholder="1. Você ainda trabalha na empresa ou já foi demitido?&#10;2. Quanto tempo de empresa?&#10;3. Recebia horas extras?" v-bind="textareaClass" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.lig_perguntas" placeholder="1. Você ainda trabalha na empresa ou já foi demitido?&#10;2. Quanto tempo de empresa?&#10;3. Recebia horas extras?" v-bind="textareaClass" class="flex-1" />
+              <ObMicButton v-model="form.lig_perguntas" />
+            </div>
           </ObField>
           <ObField label="Objeções comuns na ligação e como tratar" class="mt-4">
-            <textarea v-model="form.lig_objecoes" placeholder="Não tenho tempo → Entendo, leva 2 minutos. Posso seguir?&#10;Não tenho interesse → [prova social rápida]" v-bind="textareaClass" style="min-height:58px" />
+            <div class="flex items-start gap-2">
+              <textarea v-model="form.lig_objecoes" placeholder="Não tenho tempo → Entendo, leva 2 minutos. Posso seguir?&#10;Não tenho interesse → [prova social rápida]" v-bind="textareaClass" style="min-height:58px;line-height:1.6" class="flex-1" />
+              <ObMicButton v-model="form.lig_objecoes" />
+            </div>
           </ObField>
-        </ObCard>
-
-        <ObCard title="Fechamento — detalhes específicos">
-          <ObField label="Estrutura da reunião de fechamento" hint="Deixe em branco para usar o padrão Enriquecedor.">
-            <textarea v-model="form.fech_estrutura" placeholder="Ex:&#10;1. Rapport (2 min)&#10;2. Recapitulação do SDR&#10;3. Diagnóstico com perguntas" v-bind="textareaClass" style="min-height:100px" />
-          </ObField>
-          <ObField label="Particularidades operacionais" hint="Regras de negócio, restrições legais, critério especial..." class="mt-4">
-            <textarea v-model="form.particularidades" placeholder="Ex: Só entra no Pipedrive quem confirmar no chatbot. Leads de indicação vão direto pro closer sem cadência." v-bind="textareaClass" style="min-height:58px" />
-          </ObField>
-        </ObCard>
-
-        <ObCard title="Referência de material existente">
-          <ObField label="Já existe algum material que a IA pode tomar como referência?" hint="Se sim, indique o cliente.">
-            <ObChips :options="['Sim, tenho','Não tenho']" :value="[form.tem_ref]" single @toggle="(v) => form.tem_ref = form.tem_ref === v ? '' : v" />
-          </ObField>
-          <div v-if="form.tem_ref === 'Sim, tenho'" class="mt-4">
-            <ObField label="De qual cliente?">
-              <input v-model="form.ref_cliente" placeholder="Ex: Béda Advocacia, CBC Contabilidade..." v-bind="inputClass" />
-            </ObField>
-          </div>
         </ObCard>
       </div>
 
@@ -503,14 +522,16 @@
             <div class="space-y-2">
               <ObOptRow v-for="opt in ['Instagram','YouTube','LinkedIn','Podcasts','TikTok','Outro']" :key="opt" :text="opt" :selected="form.fonte_conteudo === opt" @click="form.fonte_conteudo = form.fonte_conteudo === opt ? '' : opt" />
             </div>
+            <input v-if="form.fonte_conteudo === 'Outro'" v-model="form.fonte_conteudo_outro" placeholder="Descreva qual fonte..." v-bind="inputClass" class="mt-3" />
           </ObField>
         </ObCard>
 
         <ObCard title="Descoberta da marca">
           <ObField label="Como ouviu falar do Grupo Enriquecedor?">
             <div class="space-y-2">
-              <ObOptRow v-for="opt in ['Um amigo ou parceiro recomendou','Vi um conteúdo ou anúncio no Instagram, LinkedIn ou YouTube','Pesquisei sobre o problema e encontrei vocês']" :key="opt" :text="opt" :selected="form.como_descobriu === opt" @click="form.como_descobriu = form.como_descobriu === opt ? '' : opt" />
+              <ObOptRow v-for="opt in ['Um amigo ou parceiro recomendou','Vi um conteúdo ou anúncio no Instagram, LinkedIn ou YouTube','Pesquisei sobre o problema e encontrei vocês','Outro']" :key="opt" :text="opt" :selected="form.como_descobriu === opt" @click="form.como_descobriu = form.como_descobriu === opt ? '' : opt" />
             </div>
+            <input v-if="form.como_descobriu === 'Outro'" v-model="form.como_descobriu_outro" placeholder="Descreva como descobriu..." v-bind="inputClass" class="mt-3" />
           </ObField>
         </ObCard>
 
@@ -518,7 +539,7 @@
           <ObField label="O que o pré-vendedor fez que foi decisivo para você aceitar a reunião?">
             <div class="space-y-2">
               <ObOptRow
-                v-for="opt in OPCOES_DECISIVO"
+                v-for="opt in [...OPCOES_DECISIVO, 'Outro']"
                 :key="opt"
                 :text="opt"
                 :selected="form.decisivo_prospeccao.includes(opt)"
@@ -526,6 +547,7 @@
                 @click="toggleChip(form.decisivo_prospeccao, opt)"
               />
             </div>
+            <input v-if="form.decisivo_prospeccao.includes('Outro')" v-model="form.decisivo_prospeccao_outro" placeholder="Descreva o que foi decisivo..." v-bind="inputClass" class="mt-3" />
           </ObField>
         </ObCard>
 
@@ -533,7 +555,7 @@
           <ObField label="Qual frase descreve melhor sua experiência na reunião?">
             <div class="space-y-2">
               <ObOptRow
-                v-for="opt in OPCOES_REUNIAO"
+                v-for="opt in [...OPCOES_REUNIAO, 'Outro']"
                 :key="opt"
                 :text="opt"
                 :selected="form.experiencia_reuniao.includes(opt)"
@@ -541,14 +563,16 @@
                 @click="toggleChip(form.experiencia_reuniao, opt)"
               />
             </div>
+            <input v-if="form.experiencia_reuniao.includes('Outro')" v-model="form.experiencia_reuniao_outro" placeholder="Descreva sua experiência..." v-bind="inputClass" class="mt-3" />
           </ObField>
         </ObCard>
 
         <ObCard title="Indicador de sucesso">
           <ObField label="Ao final do projeto, qual indicador fará você dizer que valeu a pena?">
             <div class="space-y-2">
-              <ObOptRow v-for="opt in OPCOES_SUCESSO" :key="opt" :text="opt" :selected="form.indicador_sucesso === opt" @click="form.indicador_sucesso = form.indicador_sucesso === opt ? '' : opt" />
+              <ObOptRow v-for="opt in [...OPCOES_SUCESSO, 'Outro']" :key="opt" :text="opt" :selected="form.indicador_sucesso === opt" @click="form.indicador_sucesso = form.indicador_sucesso === opt ? '' : opt" />
             </div>
+            <input v-if="form.indicador_sucesso === 'Outro'" v-model="form.indicador_sucesso_outro" placeholder="Descreva o indicador..." v-bind="inputClass" class="mt-3" />
           </ObField>
         </ObCard>
       </div>
@@ -603,9 +627,7 @@
           <ObSummaryRow k="Funis ativos" :v="form.funis.join(', ') || '—'" />
         </ObCard>
 
-        <ObCard title="Time">
-          <ObSummaryRow k="SDR" :v="form.sdr" />
-          <ObSummaryRow k="Closer" :v="form.closer" />
+        <ObCard title="Fechamento">
           <ObSummaryRow k="Plano" :v="form.plano_selecionado.toUpperCase() || '—'" />
         </ObCard>
 
@@ -749,14 +771,16 @@ const id = route.params.id as string
 const {
   form, step, saving, submitting, loading, status, dealId, dealName,
   load, nextStep, prevStep, submit,
-  toggleChip, toggleFunil, selectPlano, addEtapa, addBonus,
+  toggleChip, toggleFunil, selectPlano, addEtapa, addBonus, moveInList,
   PLANOS,
   materials, materialsGenerating, loadMaterials, generateMaterials,
   createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
+  suggestingScripts, suggestScripts,
 } = useOnboarding(id)
 
 const createModalOpen = ref(false)
 const creatingMaterial = ref(false)
+const showFechExtra = ref(false)
 const router = useRouter()
 
 // ── Regras de onboarding ──
@@ -812,7 +836,7 @@ const STATUS_LABEL: Record<string, string> = {
   synced: 'Sincronizado',
 }
 
-const STEP_LABELS = ['Negócio', 'Lead', 'Funis', 'Time', 'Scripts', 'Datas', 'Pesquisa', 'Gerar']
+const STEP_LABELS = ['Negócio', 'Lead', 'Funis', 'Fechamento', 'Scripts', 'Datas', 'Pesquisa', 'Gerar']
 
 const FUNIS = [
   { key: 'trafego',    name: 'Tráfego Pago',          desc: 'Meta Ads, Google, TikTok' },
@@ -821,13 +845,6 @@ const FUNIS = [
   { key: 'carteira',   name: 'Carteira / Reativação',   desc: 'Leads antigos ou perdidos' },
   { key: 'posvenda',   name: 'Pós-venda / Indicação',   desc: 'Clientes fechados, indicações' },
   { key: 'custom',     name: 'Funil Customizado',        desc: 'Lógica diferente dos acima' },
-]
-
-const OPCOES_OPERADOR = [
-  'SDR treinado em vendas — pode usar terminologia comercial normalmente',
-  'Atendente ou recepcionista — substituir jargões por ações concretas e simples',
-  'Assistente comercial — conhece o básico, mas não é especialista',
-  'O próprio dono ou sócio — opera e vende ao mesmo tempo',
 ]
 
 const OPCOES_DECISIVO = [

@@ -42,10 +42,19 @@ Register new routers in `core/api.py` via `api.add_router('prefix/', router)`.
 
 ### AI Agents (onboarding module)
 
-- Framework: `agno` with OpenAI models (GPT-5.4-nano).
+- Framework: `agno` v2.6.4 with OpenAI models (GPT-5.4-nano).
 - RAG: pgvector extension on PostgreSQL 17, knowledge base from markdown files in `onboarding/knowledge/`.
 - `MaterialWorkflow` runs 4 agents (1 validator + 3 generators in parallel via `asyncio.gather`).
 - Generation is async via Django-Q2 tasks.
+
+### agno v2.6.4 API (critical quirks)
+
+- **Pydantic output schema** param is `output_schema=` (NOT `response_model` or `output_model` — `output_model` is for model/LLM provider instances).
+- `output_schema` must be a `BaseModel` subclass. `list[str]` (a `GenericAlias`) fails — wrap it in a schema like `class QualityAlerts(BaseModel): alerts: list[str]`.
+- Parsed result lives in `val_resp.content` (when `output_schema` is a `BaseModel`, `.content` is the parsed instance).
+- `Knowledge.insert(path=)` accepts a **single string** — loop files for multiple; `insert_many(paths=)` also works.
+- Knowledge base uses OpenAI embeddings — `OPENAI_API_KEY` must be in `os.environ` (agno's OpenAI client reads env, not python-decouple). Set via `os.environ.setdefault('OPENAI_API_KEY', config('OPENAI_API_KEY'))` in `settings.py`.
+- `PgVector` constructor expects `db_url`. The agno library looks for `DATABASE_URL` env var. Either set it in `.env` or construct from `POSTGRES_*` vars.
 
 ### Database
 
@@ -55,9 +64,10 @@ Register new routers in `core/api.py` via `api.add_router('prefix/', router)`.
 
 ### Settings
 
-- Env loading: `python-decouple` (reads `.env` in `backend/`).
+- Env loading: `python-decouple` (reads `.env` in `backend/`). Does NOT inject into `os.environ` — SDKs (OpenAI, httpx) that read env vars directly must be set explicitly (see `core/settings.py`).
 - Locale: `pt-BR`, timezone `America/Sao_Paulo`.
 - Storage: S3/MinIO via `django-storages` (env: `MINIO_*` vars).
+- Django-Q2 timeout default is 60s — may be too short for AI generation tasks.
 
 ## Frontend
 

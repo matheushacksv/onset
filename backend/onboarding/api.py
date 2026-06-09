@@ -1,34 +1,78 @@
-from django_q.tasks import async_task
-from ninja import Router, Status
-from .models import OnboardingForm
-from accounts.models import User
-from .schemas import (DealOut, OnboardingStepIn, OnboardingOut, OnboardingCreateIn, MaterialLibraryItemOut, DevMaterialDetailOut, 
-                      ShareCreateIn, ShareOut, SharedGateOut, SharedMaterialOut, ShareUnlockIn, AssessorOption, MaterialLibraryPageOut, 
-                      DuplicateOnboardingIn, AttachDealIn, BlankMaterialIn, CloneMaterialIn, RuleOut, RuleIn, RuleWithAckOut)
-from .agents.schemas import MaterialOut, MaterialPatchIn, AssistantIn, AssistantOut
-from .agents.assistant import AssistantSession
-from .pipedrive_services import list_deals, update_deal, create_note
-from core.errors import Error
-from django.shortcuts import get_object_or_404
-from .models import GeneratedMaterial, MaterialShare, OnboardingRule, OnboardingRuleAck
-from django.utils import timezone
-from django.http import HttpResponse
-from django.utils.text import slugify
-from .pdf.renderer import render_material_pdf
-import secrets
 import copy
+import secrets
 from datetime import timedelta
-from django.contrib.auth.hashers import make_password, check_password
+
+from agno.agent import Agent
+from agno.models.openai import OpenAIChat
+from django.contrib.auth.hashers import check_password, make_password
 from django.core import signing
 from django.db.models import F
+from django.db.models.fields.composite import json
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from django.utils.text import slugify
+from django_q.tasks import async_task
+from ninja import Router, Status
+from ninja.files import UploadedFile
+from ninja import File as NinjaFile
+
+from accounts.models import User
+from core.errors import Error
+
+from .agents.assistant import AssistantSession
+from .agents.contexts_functions import onboarding_to_dict
+from .agents.prompts import SCRIPT_SUGGEST_PROMPT
+from .agents.schemas import (
+    AssistantIn,
+    AssistantOut,
+    MaterialOut,
+    MaterialPatchIn,
+    ScriptSuggestionOut,
+)
+from .models import (
+    GeneratedMaterial,
+    MaterialShare,
+    OnboardingForm,
+    OnboardingRule,
+    OnboardingRuleAck,
+)
+from .pdf.renderer import render_material_pdf
+from .pipedrive_services import create_note, list_deals
+from .schemas import (
+    AssessorOption,
+    AttachDealIn,
+    BlankMaterialIn,
+    CloneMaterialIn,
+    DealOut,
+    DevMaterialDetailOut,
+    DuplicateOnboardingIn,
+    MaterialLibraryItemOut,
+    MaterialLibraryPageOut,
+    OnboardingCreateIn,
+    OnboardingOut,
+    OnboardingStepIn,
+    RuleIn,
+    RuleOut,
+    RuleWithAckOut,
+    ShareCreateIn,
+    SharedGateOut,
+    SharedMaterialOut,
+    ShareOut,
+    ShareUnlockIn,
+    TranscribeOut,
+)
 
 router = Router(tags=['Onboarding'])
+
 
 def _is_desenvolvedor(user) -> bool:
     return user.groups.filter(name='Desenvolvedor').exists() and not user.is_superuser
 
+
 def _is_admin(user) -> bool:
     return user.is_superuser
+
 
 def _build_note(o: OnboardingForm) -> str:
     def v(value) -> str:
@@ -36,6 +80,10 @@ def _build_note(o: OnboardingForm) -> str:
         if value is None or value == '' or value == []:
             return '—'
         return str(value)
+
+    def outro(text) -> str:
+        """Sufixo com o texto livre de 'Outro', se houver."""
+        return f' — Outro: {text}' if text else ''
 
     def lst(items: list) -> str:
         """Formata lista simples separada por vírgula."""
@@ -105,38 +153,56 @@ def _build_note(o: OnboardingForm) -> str:
 
     # Detalhes de cada funil ativo
     funil_detalhes = {
-        'trafego': ('Tráfego Pago', [
-            ('Etapas', etapas(o.trafego_etapas)),
-            ('Isca / lead magnet', v(o.trafego_isca)),
-            ('Plataforma', v(o.trafego_plataforma)),
-            ('Dias no funil', v(o.trafego_dias)),
-            ('Bot / automação', v(o.trafego_bot)),
-        ]),
-        'prosp': ('Prospecção Ativa', [
-            ('Etapas', etapas(o.prosp_etapas)),
-            ('Perfil alvo', v(o.prosp_perfil)),
-            ('Dias no funil', v(o.prosp_dias)),
-            ('Canais', lst(o.prosp_canais)),
-            ('Fonte de lista', v(o.prosp_fonte)),
-        ]),
-        'social': ('Social Orgânico', [
-            ('Etapas', etapas(o.social_etapas)),
-            ('Plataforma', v(o.social_plat)),
-            ('Dias no funil', v(o.social_dias)),
-        ]),
-        'carteira': ('Carteira', [
-            ('Etapas', etapas(o.carteira_etapas)),
-            ('Responsável', v(o.carteira_quem)),
-            ('Frequência de contato', v(o.cart_freq)),
-        ]),
-        'posvenda': ('Pós-venda', [
-            ('Etapas', etapas(o.posvenda_etapas)),
-            ('Observações', v(o.posvenda_obs)),
-        ]),
-        'custom': ('Funil Personalizado', [
-            ('Etapas', etapas(o.custom_etapas)),
-            ('Descrição do fluxo', v(o.custom_fluxo)),
-        ]),
+        'trafego': (
+            'Tráfego Pago',
+            [
+                ('Etapas', etapas(o.trafego_etapas)),
+                ('Isca / lead magnet', v(o.trafego_isca)),
+                ('Plataforma', v(o.trafego_plataforma)),
+                ('Dias no funil', v(o.trafego_dias)),
+                ('Bot / automação', v(o.trafego_bot)),
+            ],
+        ),
+        'prosp': (
+            'Prospecção Ativa',
+            [
+                ('Etapas', etapas(o.prosp_etapas)),
+                ('Perfil alvo', v(o.prosp_perfil)),
+                ('Dias no funil', v(o.prosp_dias)),
+                ('Canais', lst(o.prosp_canais)),
+                ('Fonte de lista', v(o.prosp_fonte)),
+            ],
+        ),
+        'social': (
+            'Social Orgânico',
+            [
+                ('Etapas', etapas(o.social_etapas)),
+                ('Plataforma', v(o.social_plat)),
+                ('Dias no funil', v(o.social_dias)),
+            ],
+        ),
+        'carteira': (
+            'Carteira',
+            [
+                ('Etapas', etapas(o.carteira_etapas)),
+                ('Responsável', v(o.carteira_quem)),
+                ('Frequência de contato', v(o.cart_freq)),
+            ],
+        ),
+        'posvenda': (
+            'Pós-venda',
+            [
+                ('Etapas', etapas(o.posvenda_etapas)),
+                ('Observações', v(o.posvenda_obs)),
+            ],
+        ),
+        'custom': (
+            'Funil Personalizado',
+            [
+                ('Etapas', etapas(o.custom_etapas)),
+                ('Descrição do fluxo', v(o.custom_fluxo)),
+            ],
+        ),
     }
 
     for key, (titulo, campos) in funil_detalhes.items():
@@ -148,20 +214,8 @@ def _build_note(o: OnboardingForm) -> str:
 
     lines += [
         '',
-        '## Time',
-        f'SDR: {v(o.sdr)}',
-        f'Closer: {v(o.closer)}',
-        f'Especialista: {v(o.especialista)}',
-        f'Empresa de scripts: {v(o.empresa_scripts)}',
-        f'Perfil do operador: {v(o.perfil_operador)}',
+        '## Fechamento',
         f'Etapas de fechamento: {etapas(o.etapas_fechamento)}',
-        f'Fechamento específico: {v(o.fech_especifico)}',
-        f'Tipo de reunião: {v(o.tipo_reuniao)}',
-        f'Passagem SDR → Closer: {v(o.passagem)}',
-        f'Apresentação de preço: {v(o.apresenta_preco)}',
-        f'Método de vendas: {lst(o.metodo)}',
-        f'Condição especial: {v(o.condicao_especial)}',
-        f'Objeções no fechamento: {v(o.objecoes_fecha)}',
         '',
         '## Scripts',
         '',
@@ -189,47 +243,65 @@ def _build_note(o: OnboardingForm) -> str:
         f'Encontros bônus: {encontros(o.bonus_encontros)}',
         '',
         '## Pesquisa',
-        f'Fonte de conteúdo: {v(o.fonte_conteudo)}',
-        f'Como descobriu a empresa: {v(o.como_descobriu)}',
-        f'Decisivo na prospecção: {lst(o.decisivo_prospeccao)}',
-        f'Experiência na reunião: {lst(o.experiencia_reuniao)}',
-        f'Indicador de sucesso: {v(o.indicador_sucesso)}',
+        f'Fonte de conteúdo: {v(o.fonte_conteudo)}{outro(o.fonte_conteudo_outro)}',
+        f'Como descobriu a empresa: {v(o.como_descobriu)}{outro(o.como_descobriu_outro)}',
+        f'Decisivo na prospecção: {lst(o.decisivo_prospeccao)}{outro(o.decisivo_prospeccao_outro)}',
+        f'Experiência na reunião: {lst(o.experiencia_reuniao)}{outro(o.experiencia_reuniao_outro)}',
+        f'Indicador de sucesso: {v(o.indicador_sucesso)}{outro(o.indicador_sucesso_outro)}',
     ]
 
     return '\n'.join(lines)
 
 
 @router.get('/dev/materials', response={200: MaterialLibraryPageOut, 403: Error})
-def list_materials_to_dev(request, q: str = '', assessor_id: int = None, sort: str = 'recent', limit: int = 12, offset: int = 0):
+def list_materials_to_dev(
+    request,
+    q: str = '',
+    assessor_id: int = None,
+    sort: str = 'recent',
+    limit: int = 12,
+    offset: int = 0,
+):
     if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
         return Status(403, Error(detail='Não autorizado'))
-    qs = (
-        OnboardingForm.objects
-        .filter(material__status=GeneratedMaterial.Status.COMPLETE, material__published=True)
-        .select_related('assessor', 'material')
-    )
+    qs = OnboardingForm.objects.filter(
+        material__status=GeneratedMaterial.Status.COMPLETE, material__published=True
+    ).select_related('assessor', 'material')
     if q:
         qs = qs.filter(pipedrive_deal_name__icontains=q)
     if assessor_id:
         qs = qs.filter(assessor_id=assessor_id)
-    order = {'recent': '-material__published_at',
-             'old': 'material__published_at',
-             'name': 'pipedrive_deal_name'}.get(sort, '-material__published_at')
+    order = {
+        'recent': '-material__published_at',
+        'old': 'material__published_at',
+        'name': 'pipedrive_deal_name',
+    }.get(sort, '-material__published_at')
     qs = qs.order_by(order)
     total = qs.count()
-    items = list(qs[offset:offset + limit])
+    items = list(qs[offset : offset + limit])
     return Status(200, {'items': items, 'total': total})
 
-@router.get('/dev/materials/assessors', response={200: list[AssessorOption], 403: Error})
+
+@router.get(
+    '/dev/materials/assessors', response={200: list[AssessorOption], 403: Error}
+)
 def list_material_assessors(request):
     if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
         return Status(403, Error(detail='Não autorizado'))
-    ids = (OnboardingForm.objects
-           .filter(material__status=GeneratedMaterial.Status.COMPLETE, material__published=True)
-           .values_list('assessor_id', flat=True).distinct())
+    ids = (
+        OnboardingForm.objects.filter(
+            material__status=GeneratedMaterial.Status.COMPLETE, material__published=True
+        )
+        .values_list('assessor_id', flat=True)
+        .distinct()
+    )
     return User.objects.filter(id__in=ids).order_by('name')
 
-@router.get('/dev/materials/{onboarding_id}', response={200: DevMaterialDetailOut, 403: Error, 404: Error})
+
+@router.get(
+    '/dev/materials/{onboarding_id}',
+    response={200: DevMaterialDetailOut, 403: Error, 404: Error},
+)
 def get_materials_to_dev(request, onboarding_id: int):
     if not _is_desenvolvedor(request.auth) and not request.auth.is_superuser:
         return Status(403, Error(detail='Não autorizado'))
@@ -240,6 +312,7 @@ def get_materials_to_dev(request, onboarding_id: int):
         material__published=True,
     )
 
+
 @router.get('/deals/', response={200: list[DealOut], 400: Error})
 def list_onboarding_deals(request):
     try:
@@ -248,42 +321,60 @@ def list_onboarding_deals(request):
         return Status(400, Error(detail=f'Erro ao buscar deals: {e}'))
     return Status(200, deals)
 
+
 @router.get('', response={200: list[OnboardingOut]})
 def list_onboardings(request):
     if request.auth.is_superuser or _is_desenvolvedor(request.auth):
-        qs = OnboardingForm.objects.select_related('assessor').prefetch_related('material').all()
+        qs = (
+            OnboardingForm.objects.select_related('assessor')
+            .prefetch_related('material')
+            .all()
+        )
     else:
-        qs = OnboardingForm.objects.select_related('assessor').prefetch_related('material').filter(assessor=request.auth)
+        qs = (
+            OnboardingForm.objects.select_related('assessor')
+            .prefetch_related('material')
+            .filter(assessor=request.auth)
+        )
 
     return Status(200, list(qs))
+
 
 @router.post('', response={200: OnboardingOut, 403: Error, 409: Error})
 def create_onboarding(request, data: OnboardingCreateIn):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
-    
+
     if data.pipedrive_deal_id:
-        if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exists():
+        if OnboardingForm.objects.filter(
+            pipedrive_deal_id=data.pipedrive_deal_id
+        ).exists():
             return Status(409, Error(detail='Já existe um onboarding para este deal'))
 
     onboarding = OnboardingForm.objects.create(
         assessor=request.auth,
         pipedrive_deal_id=data.pipedrive_deal_id or None,
         pipedrive_deal_name=data.pipedrive_deal_name or 'Sem deal',
-        status=OnboardingForm.Status.DRAFT
+        status=OnboardingForm.Status.DRAFT,
     )
     return Status(200, onboarding)
+
 
 @router.post('/{id}/attach-deal', response={200: OnboardingOut, 404: Error, 409: Error})
 def attach_deal(request, id: int, data: AttachDealIn):
     ob = get_object_or_404(OnboardingForm, id=id)
-    if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exclude(id=id).exists():
+    if (
+        OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id)
+        .exclude(id=id)
+        .exists()
+    ):
         return Status(409, Error(detail='Já existe onboarding para esse deal'))
-    
+
     ob.pipedrive_deal_id = data.pipedrive_deal_id
     ob.pipedrive_deal_name = data.pipedrive_deal_name
     ob.save(update_fields=['pipedrive_deal_id', 'pipedrive_deal_name', 'updated_at'])
     return Status(200, ob)
+
 
 @router.post('/blank-material', response={200: OnboardingOut})
 def create_blank_material(request, data: BlankMaterialIn):
@@ -291,18 +382,30 @@ def create_blank_material(request, data: BlankMaterialIn):
         assessor=request.auth,
         pipedrive_deal_id=None,
         pipedrive_deal_name=data.name or 'Material sem deal e nome',
-        status=OnboardingForm.Status.DRAFT
+        status=OnboardingForm.Status.DRAFT,
     )
     GeneratedMaterial.objects.create(
         onboarding=ob,
         status=GeneratedMaterial.Status.COMPLETE,
         crm={'funnels': []},
-        closing={'diagnostic_questions': [], 'price_presentation': '', 'objection_matrix': [], 'closing_script': ''},
-        qualification={'profile': None, 'whatsapp_flow': [], 'call_pitch': '', 'advance_criteria': [], 'disqualification_criteria': []},
+        closing={
+            'diagnostic_questions': [],
+            'price_presentation': '',
+            'objection_matrix': [],
+            'closing_script': '',
+        },
+        qualification={
+            'profile': None,
+            'whatsapp_flow': [],
+            'call_pitch': '',
+            'advance_criteria': [],
+            'disqualification_criteria': [],
+        },
         published=False,
         quality_alerts=[],
     )
     return Status(200, ob)
+
 
 @router.post('/clone-material', response={200: OnboardingOut, 404: Error})
 def clone_material_to_blank(request, data: CloneMaterialIn):
@@ -310,7 +413,8 @@ def clone_material_to_blank(request, data: CloneMaterialIn):
     ob = OnboardingForm.objects.create(
         assessor=request.auth,
         pipedrive_deal_id=None,
-        pipedrive_deal_name=data.name or f'Cópia de {source.onboarding.pipedrive_deal_name}',
+        pipedrive_deal_name=data.name
+        or f'Cópia de {source.onboarding.pipedrive_deal_name}',
         status=OnboardingForm.Status.DRAFT,
     )
     GeneratedMaterial.objects.create(
@@ -320,11 +424,13 @@ def clone_material_to_blank(request, data: CloneMaterialIn):
         closing=copy.deepcopy(source.closing),
         qualification=copy.deepcopy(source.qualification),
         published=False,
-        quality_alerts=[]
+        quality_alerts=[],
     )
     return Status(200, ob)
 
-#* ---- Admin configs ----
+
+# * ---- Admin configs ----
+
 
 @router.get('/list-rules', response={200: list[RuleOut], 403: Error})
 def list_rules(request):
@@ -332,22 +438,27 @@ def list_rules(request):
         return Status(403, Error(detail='Não autorizado'))
     return Status(200, list(OnboardingRule.objects.all()))
 
+
 @router.post('/rules', response={200: RuleOut, 403: Error})
 def create_rule(request, data: RuleIn):
     if not _is_admin(request.auth):
         return Status(403, Error(detail='Não autorizado'))
-    
+
     rule = OnboardingRule.objects.create(
-        name=data.name, content=data.content, active=data.active,
-        order=data.order, created_by=request.auth
+        name=data.name,
+        content=data.content,
+        active=data.active,
+        order=data.order,
+        created_by=request.auth,
     )
     return Status(200, rule)
+
 
 @router.put('/rules/{rule_id}', response={200: RuleOut, 403: Error, 404: Error})
 def update_rule(request, rule_id: int, data: RuleIn):
     if not _is_admin(request.auth):
         return Status(403, Error(detail='Não autorizado'))
-    
+
     rule = get_object_or_404(OnboardingRule, id=rule_id)
     rule.name = data.name
     rule.content = data.content
@@ -356,52 +467,75 @@ def update_rule(request, rule_id: int, data: RuleIn):
     rule.save()
     return Status(200, rule)
 
+
 @router.delete('/rules/{rule_id}', response={204: None, 403: Error, 404: Error})
 def delete_rule(request, rule_id: int):
     if not _is_admin(request.auth):
         return Status(403, Error(detail='Não autorizado'))
-    
+
     get_object_or_404(OnboardingRule, id=rule_id).delete()
     return Status(204, None)
+
 
 @router.get('/{id}/rules', response={200: list[RuleWithAckOut], 404: Error})
 def onboarding_rules(request, id: int):
     if not OnboardingForm.objects.filter(id=id).exists():
         return Status(404, Error(detail='Onboarding não encontrado'))
-    
-    acked = set(OnboardingRuleAck.objects.filter(onboarding_id=id).values_list('rule_id', flat=True))
-    return Status(200, [
-        RuleWithAckOut(id=r.id, name=r.name, content=r.content, checked=r.id in acked)
-        for r in OnboardingRule.objects.filter(active=True)
-    ])
+
+    acked = set(
+        OnboardingRuleAck.objects.filter(onboarding_id=id).values_list(
+            'rule_id', flat=True
+        )
+    )
+    return Status(
+        200,
+        [
+            RuleWithAckOut(
+                id=r.id, name=r.name, content=r.content, checked=r.id in acked
+            )
+            for r in OnboardingRule.objects.filter(active=True)
+        ],
+    )
+
 
 @router.post('/{id}/rules/{rule_id}', response={200: dict, 404: Error})
 def toggle_rule_ack(request, id: int, rule_id: int):
-    if not OnboardingForm.objects.filter(id=id).exists() or not OnboardingRule.objects.filter(id=rule_id).exists():
+    if (
+        not OnboardingForm.objects.filter(id=id).exists()
+        or not OnboardingRule.objects.filter(id=rule_id).exists()
+    ):
         return Status(404, Error(detail='Onboarding ou Regra não existe'))
-    
+
     ack, created = OnboardingRuleAck.objects.get_or_create(
-        rule_id=rule_id, onboarding_id=id, defaults={'checked_by': request.auth},
+        rule_id=rule_id,
+        onboarding_id=id,
+        defaults={'checked_by': request.auth},
     )
     if not created:
         ack.delete()
         return Status(200, {'checked': False})
     return Status(200, {'checked': True})
 
-#* ---- Webhook Pipedrive (gravação de reunião) ----
 
-@router.post('/webhooks/pipedrive/activity/', auth=None, response={200: dict, 401: Error})
+# * ---- Webhook Pipedrive (gravação de reunião) ----
+
+
+@router.post(
+    '/webhooks/pipedrive/activity/', auth=None, response={200: dict, 401: Error}
+)
 def pipedrive_activity_webhook(request):
     """Dispara ao concluir uma atividade no Pipedrive. Se a atividade tem link do
     Meet e o deal carrega o folder ID do cliente, enfileira um RecordingJob pro
     reconciliador achar+mover a gravação. Sempre responde 200 rápido (sem 5xx
     pro Pipedrive não ficar reentregando)."""
     import base64
-    import json
-    import re
-    import logging
     import hmac
+    import json
+    import logging
+    import re
+
     from decouple import config as _config
+
     from .models import GoogleAccountMap, RecordingJob
     from .pipedrive_services import get_activity, get_deal
 
@@ -420,7 +554,7 @@ def pipedrive_activity_webhook(request):
     if exp_token or exp_user or exp_pass:
         ok = False
         if exp_token:
-            got = (payload.get('secret') or request.GET.get('token') or '')
+            got = payload.get('secret') or request.GET.get('token') or ''
             if isinstance(got, str) and hmac.compare_digest(got, exp_token):
                 ok = True
         if not ok and (exp_user or exp_pass):
@@ -428,7 +562,7 @@ def pipedrive_activity_webhook(request):
             if header.startswith('Basic '):
                 try:
                     u, _, p = base64.b64decode(header[6:]).decode().partition(':')
-                    ok = (u == exp_user and p == exp_pass)
+                    ok = u == exp_user and p == exp_pass
                 except Exception:
                     ok = False
         if not ok:
@@ -471,7 +605,9 @@ def pipedrive_activity_webhook(request):
 
     deal_id = _to_int(activity.get('deal_id') or obj.get('deal_id'))
     owner_id = _to_int(activity.get('user_id') or obj.get('user_id'))
-    meet_match = re.search(r'meet\.google\.com/([a-z]{3}-[a-z]{4}-[a-z]{3})', json.dumps(activity), re.I)
+    meet_match = re.search(
+        r'meet\.google\.com/([a-z]{3}-[a-z]{4}-[a-z]{3})', json.dumps(activity), re.I
+    )
     if not (deal_id and owner_id and meet_match):
         return Status(200, {'skipped': 'sem deal/owner/link meet'})
     meet_code = meet_match.group(1)
@@ -488,7 +624,11 @@ def pipedrive_activity_webhook(request):
     except Exception as e:
         log.warning(f'[webhook] falha get_deal {deal_id}: {e}')
         return Status(200, {'skipped': 'deal fetch failed'})
-    raw_folder = (deal.get('custom_fields', {}) or {}).get(folder_field) if folder_field else None
+    raw_folder = (
+        (deal.get('custom_fields', {}) or {}).get(folder_field)
+        if folder_field
+        else None
+    )
     dest_folder_id = _extract_folder_id(raw_folder)
     if not dest_folder_id:
         return Status(200, {'skipped': 'deal sem folder id'})
@@ -511,16 +651,35 @@ def _extract_folder_id(value) -> str:
         value = value.get('value') or value.get('id') or ''
     value = str(value).strip()
     import re
+
     m = re.search(r'/folders/([A-Za-z0-9_-]+)', value)
     return m.group(1) if m else value
 
 
-#* ---- Onboarding (continue) ----
+@router.post('/transcribe-audio', response={200: TranscribeOut, 400: Error})
+def transcribe_audio(request, file: UploadedFile = NinjaFile(...)):
+    try:
+        from openai import OpenAI
+        client = OpenAI()
+        transcript = client.audio.transcriptions.create(
+            model='whisper-1',
+            file=(file.name, file.read(), file.content_type),
+            language='pt',
+            response_format='text',
+        )
+        return Status(200, TranscribeOut(text=str(transcript)))
+    except Exception as e:
+        return Status(400, Error(detail=str(e)))
+
+
+# * ---- Onboarding (continue) ----
+
 
 @router.get('/{id}', response={200: OnboardingOut, 404: Error})
 def get_onboarding(request, id: int):
     onboarding = get_object_or_404(OnboardingForm, id=id)
     return Status(200, onboarding)
+
 
 @router.patch('/{id}', response={200: OnboardingOut, 403: Error, 404: Error})
 def update_onboarding(request, id: int, data: OnboardingStepIn):
@@ -533,20 +692,31 @@ def update_onboarding(request, id: int, data: OnboardingStepIn):
     onboarding.save()
     return Status(200, onboarding)
 
-@router.post('/{id}/submit', response={200: OnboardingOut, 400: Error, 403: Error, 404: Error})
+
+@router.post(
+    '/{id}/submit', response={200: OnboardingOut, 400: Error, 403: Error, 404: Error}
+)
 def submit_onboarding(request, id: int):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
     onboarding = get_object_or_404(OnboardingForm, id=id)
 
     if onboarding.pipedrive_deal_id:
-        acked = set(OnboardingRuleAck.objects.filter(onboarding=onboarding).values_list('rule_id', flat=True))
+        acked = set(
+            OnboardingRuleAck.objects.filter(onboarding=onboarding).values_list(
+                'rule_id', flat=True
+            )
+        )
         if OnboardingRule.objects.filter(active=True).exclude(id__in=acked).exists():
-            return Status(400, Error(detail='Confirme todas as regras obrigatórias antes de sincronizar'))
+            return Status(
+                400,
+                Error(
+                    detail='Confirme todas as regras obrigatórias antes de sincronizar'
+                ),
+            )
         try:
             create_note(
-                deal_id=onboarding.pipedrive_deal_id,
-                content=_build_note(onboarding)
+                deal_id=onboarding.pipedrive_deal_id, content=_build_note(onboarding)
             )
         except Exception as e:
             return Status(400, Error(detail=f'Erro ao sincronizar com Pipedrive: {e}'))
@@ -554,6 +724,7 @@ def submit_onboarding(request, id: int):
     onboarding.status = OnboardingForm.Status.SYNCED
     onboarding.save()
     return Status(200, onboarding)
+
 
 @router.delete('/{id}', response={204: None, 403: Error, 404: Error})
 def delete_draft_onboarding(request, id: int):
@@ -566,15 +737,26 @@ def delete_draft_onboarding(request, id: int):
 
     return Status(204, None)
 
+
 @router.post('/{id}/duplicate', response={200: OnboardingOut, 404: Error, 409: Error})
 def duplicate_onboarding(request, id: int, data: DuplicateOnboardingIn):
     source = get_object_or_404(OnboardingForm, id=id)
 
     if data.pipedrive_deal_id:
-        if OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id).exists():
+        if OnboardingForm.objects.filter(
+            pipedrive_deal_id=data.pipedrive_deal_id
+        ).exists():
             return 409, Error(detail='Já existe onboarding para esse deal')
-    
-    EXCLUDE = {'id', 'assessor', 'created_at', 'updated_at', 'pipedrive_deal_id', 'pipedrive_deal_name', 'status'}
+
+    EXCLUDE = {
+        'id',
+        'assessor',
+        'created_at',
+        'updated_at',
+        'pipedrive_deal_id',
+        'pipedrive_deal_name',
+        'status',
+    }
 
     payload = {
         f.name: getattr(source, f.name)
@@ -604,9 +786,27 @@ def duplicate_onboarding(request, id: int, data: DuplicateOnboardingIn):
             )
     return 200, new_ob
 
-#* ----- Material -----
 
-@router.post('/{id}/generate', response={200: MaterialOut, 202: MaterialOut, 400: Error, 403: Error})
+@router.post('/{id}/suggest-scripts', response={200: ScriptSuggestionOut, 404: Error})
+def suggest_scripts(request, id: int):
+    onboarding = get_object_or_404(OnboardingForm, id=id)
+    data = onboarding_to_dict(onboarding)
+    agent = Agent(
+        model=OpenAIChat('gpt-5.4-nano'),
+        instructions=SCRIPT_SUGGEST_PROMPT,
+        output_schema=ScriptSuggestionOut,
+    )
+    result = agent.run(json.dumps(data))
+    return Status(200, result.content)
+
+
+# * ----- Material -----
+
+
+@router.post(
+    '/{id}/generate',
+    response={200: MaterialOut, 202: MaterialOut, 400: Error, 403: Error},
+)
 def generate_materials(request, id: int):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
@@ -621,10 +821,12 @@ def generate_materials(request, id: int):
     async_task('onboarding.tasks.generate_materials_task', onboarding.id)
     return Status(202, material)
 
+
 @router.get('/{id}/materials', response={200: MaterialOut, 404: Error})
 def get_materials(request, id: int):
     material = get_object_or_404(GeneratedMaterial, onboarding_id=id)
     return Status(200, material)
+
 
 @router.patch('/{id}/materials', response={200: MaterialOut, 403: Error, 404: Error})
 def update_materials(request, id: int, data: MaterialPatchIn):
@@ -638,15 +840,21 @@ def update_materials(request, id: int, data: MaterialPatchIn):
     material.save()
     return Status(200, material)
 
+
 @router.get('/{onboarding_id}/materials/pdf', response={200: None, 400: Error})
 def download_master_pdf(request, onboarding_id: int):
     return _serve_pdf(request, onboarding_id, 'master')
 
-@router.get('/{onboarding_id}/materials/pdf/{kind}', response={200: None, 400: Error, 404: Error})
+
+@router.get(
+    '/{onboarding_id}/materials/pdf/{kind}',
+    response={200: None, 400: Error, 404: Error},
+)
 def download_section_pdf(request, onboarding_id: int, kind: str):
     if kind not in {'crm', 'closing', 'qualification'}:
         return Status(400, Error(detail='kind inválido'))
     return _serve_pdf(request, onboarding_id, kind)
+
 
 def _serve_pdf(request, onboarding_id: int, kind):
     material = get_object_or_404(GeneratedMaterial, onboarding_id=onboarding_id)
@@ -659,15 +867,20 @@ def _serve_pdf(request, onboarding_id: int, kind):
     return resp
 
 
-#* ---- Manual Material ----
+# * ---- Manual Material ----
 
-@router.post('/{onboarding_id}/materials/manual', response={201: MaterialOut, 400: Error})
+
+@router.post(
+    '/{onboarding_id}/materials/manual', response={201: MaterialOut, 400: Error}
+)
 def create_manual_material(request, onboarding_id: int):
-    onboarding = get_object_or_404(OnboardingForm, id=onboarding_id, assessor=request.auth)
+    onboarding = get_object_or_404(
+        OnboardingForm, id=onboarding_id, assessor=request.auth
+    )
 
     if hasattr(onboarding, 'material'):
         return Status(400, Error(detail='Material já existe'))
-    
+
     material = GeneratedMaterial.objects.create(
         onboarding=onboarding,
         status=GeneratedMaterial.Status.COMPLETE,
@@ -676,47 +889,68 @@ def create_manual_material(request, onboarding_id: int):
             'diagnostic_questions': [],
             'price_presentation': '',
             'objection_matrix': [],
-            'closing_script': ''
+            'closing_script': '',
         },
         qualification={
             'profile': 'b2b',
             'whatsapp_flow': [],
             'call_pitch': '',
             'advance_criteria': [],
-            'disqualification_criteria': []
-        }
+            'disqualification_criteria': [],
+        },
     )
     return Status(201, material)
 
-@router.post('/{onboarding_id}/materials/copy-from/{source_id}', response={201: MaterialOut, 400: Error, 401: Error})
+
+@router.post(
+    '/{onboarding_id}/materials/copy-from/{source_id}',
+    response={201: MaterialOut, 400: Error, 401: Error},
+)
 def copy_material(request, onboarding_id: int, source_id: int):
-    onboarding_target = get_object_or_404(OnboardingForm, id=onboarding_id, assessor=request.auth)
+    onboarding_target = get_object_or_404(
+        OnboardingForm, id=onboarding_id, assessor=request.auth
+    )
     onboarding_source = get_object_or_404(OnboardingForm, id=source_id)
 
     if hasattr(onboarding_target, 'material'):
         return Status(400, Error(detail='Material já existe'))
-    
-    if not hasattr(onboarding_source, 'material') or onboarding_source.material.status != GeneratedMaterial.Status.COMPLETE:
-        return Status(401, Error(detail='Onboarding de origem não existe material completo'))
-    
+
+    if (
+        not hasattr(onboarding_source, 'material')
+        or onboarding_source.material.status != GeneratedMaterial.Status.COMPLETE
+    ):
+        return Status(
+            401, Error(detail='Onboarding de origem não existe material completo')
+        )
+
     source_material = onboarding_source.material
     material = GeneratedMaterial.objects.create(
         onboarding=onboarding_target,
         status=GeneratedMaterial.Status.COMPLETE,
-        crm=source_material.crm, closing=source_material.closing, qualification=source_material.qualification
+        crm=source_material.crm,
+        closing=source_material.closing,
+        qualification=source_material.qualification,
     )
     return Status(201, material)
 
-@router.post('/{onboarding_id}/materials/assist/prepare', response={202: dict, 400: Error, 403: Error, 404: Error})
+
+@router.post(
+    '/{onboarding_id}/materials/assist/prepare',
+    response={202: dict, 400: Error, 403: Error, 404: Error},
+)
 def prepare_assistant(request, onboarding_id: int):
     """Dispara prewarm em background pra popular cache OpenAI. Fire-and-forget."""
     from django.core.cache import cache
+
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
     onboarding = get_object_or_404(OnboardingForm, id=onboarding_id)
     if not request.auth.is_superuser and onboarding.assessor_id != request.auth.id:
         return Status(403, Error(detail='Acesso negado'))
-    if not hasattr(onboarding, 'material') or onboarding.material.status != GeneratedMaterial.Status.COMPLETE:
+    if (
+        not hasattr(onboarding, 'material')
+        or onboarding.material.status != GeneratedMaterial.Status.COMPLETE
+    ):
         return Status(400, Error(detail='Material indisponível'))
 
     # debounce: 1 task por material a cada 10 min
@@ -732,14 +966,20 @@ def prepare_assistant(request, onboarding_id: int):
     return Status(202, {'status': 'warming'})
 
 
-@router.post('/{onboarding_id}/materials/assist', response={200: AssistantOut, 400: Error, 403: Error, 404: Error})
+@router.post(
+    '/{onboarding_id}/materials/assist',
+    response={200: AssistantOut, 400: Error, 403: Error, 404: Error},
+)
 def assist_material(request, onboarding_id: int, payload: AssistantIn):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
     onboarding = get_object_or_404(OnboardingForm, id=onboarding_id)
     if not request.auth.is_superuser and onboarding.assessor_id != request.auth.id:
         return Status(403, Error(detail='Acesso negado'))
-    if not hasattr(onboarding, 'material') or onboarding.material.status != GeneratedMaterial.Status.COMPLETE:
+    if (
+        not hasattr(onboarding, 'material')
+        or onboarding.material.status != GeneratedMaterial.Status.COMPLETE
+    ):
         return Status(400, Error(detail='Material indisponível'))
 
     session = AssistantSession(
@@ -756,11 +996,19 @@ def assist_material(request, onboarding_id: int, payload: AssistantIn):
 
 @router.get('/materials/library', response=list[MaterialLibraryItemOut])
 def list_materials(request):
-    return OnboardingForm.objects.filter(
-        material__status=GeneratedMaterial.Status.COMPLETE
-    ).select_related('assessor').order_by('-updated_at')
+    return (
+        OnboardingForm.objects.filter(
+            material__status=GeneratedMaterial.Status.COMPLETE
+        )
+        .select_related('assessor')
+        .order_by('-updated_at')
+    )
 
-@router.post('/{onboarding_id}/materials/publish', response={200: MaterialOut, 400: Error, 403: Error, 404: Error})
+
+@router.post(
+    '/{onboarding_id}/materials/publish',
+    response={200: MaterialOut, 400: Error, 403: Error, 404: Error},
+)
 def publish_material(request, onboarding_id: int):
     qs = OnboardingForm.objects.select_related('material')
     if not request.auth.is_superuser:
@@ -776,10 +1024,12 @@ def publish_material(request, onboarding_id: int):
 
     return Status(200, material)
 
-#* ---- Share Material ----
+
+# * ---- Share Material ----
+
 
 def _strip_internal(crm):
-    '''Remove campos internos do CRM'''
+    """Remove campos internos do CRM"""
     if not crm:
         return crm
     crm = copy.deepcopy(crm)
@@ -787,6 +1037,7 @@ def _strip_internal(crm):
         for stage in funnel.get('stages', []):
             stage.pop('dev_instructions', None)
     return crm
+
 
 def _shared_payload(material):
     o = material.onboarding
@@ -796,8 +1047,9 @@ def _shared_payload(material):
         'generated_at': material.created_at,
         'crm': _strip_internal(material.crm),
         'closing': material.closing,
-        'qualification': material.qualification
+        'qualification': material.qualification,
     }
+
 
 def _resolve_expiry(data: ShareCreateIn):
     if data.expires_at:
@@ -806,6 +1058,7 @@ def _resolve_expiry(data: ShareCreateIn):
         return timezone.now() + timedelta(days=data.expires_in_days)
     return None
 
+
 def _get_owned_material(request, onboarding_id: int):
     qs = OnboardingForm.objects.select_related('material')
     if not request.auth.is_superuser:
@@ -813,14 +1066,18 @@ def _get_owned_material(request, onboarding_id: int):
     onboarding = get_object_or_404(qs, id=onboarding_id)
     return getattr(onboarding, 'material', None)
 
-@router.post('/{onboarding_id}/materials/share', response={200: ShareOut, 400: Error, 403: Error, 404: Error})
+
+@router.post(
+    '/{onboarding_id}/materials/share',
+    response={200: ShareOut, 400: Error, 403: Error, 404: Error},
+)
 def create_share(request, onboarding_id: int, data: ShareCreateIn):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
     material = _get_owned_material(request, onboarding_id)
     if material is None or material.status != GeneratedMaterial.Status.COMPLETE:
         return Status(400, Error(detail='Material indisponível'))
-    
+
     share, _ = MaterialShare.objects.update_or_create(
         material=material,
         defaults={
@@ -830,10 +1087,11 @@ def create_share(request, onboarding_id: int, data: ShareCreateIn):
             'revoked': False,
             'view_count': 0,
             'last_viewed_at': None,
-            'created_by': request.auth
-        }
+            'created_by': request.auth,
+        },
     )
     return Status(200, share)
+
 
 @router.get('/{onboarding_id}/materials/share', response={200: ShareOut, 404: Error})
 def get_share(request, onboarding_id: int):
@@ -843,7 +1101,10 @@ def get_share(request, onboarding_id: int):
         return Status(404, Error(detail='Sem link de compartilhamento'))
     return Status(200, share)
 
-@router.delete('/{onboarding_id}/materials/share', response={204: None, 403: Error, 404: Error})
+
+@router.delete(
+    '/{onboarding_id}/materials/share', response={204: None, 403: Error, 404: Error}
+)
 def revoke_share(request, onboarding_id: int):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
@@ -855,15 +1116,26 @@ def revoke_share(request, onboarding_id: int):
     share.save(update_fields=['revoked', 'updated_at'])
     return Status(204, None)
 
-#* ---- Share público (auth=None) ----
 
-@router.get('/share/{token}', auth=None, response={200: SharedMaterialOut, 401: SharedGateOut, 404: Error, 410: Error})
+# * ---- Share público (auth=None) ----
+
+
+@router.get(
+    '/share/{token}',
+    auth=None,
+    response={200: SharedMaterialOut, 401: SharedGateOut, 404: Error, 410: Error},
+)
 def view_shared(request, token: str):
-    share = get_object_or_404(MaterialShare.objects.select_related('material__onboarding__assessor'), token=token)
+    share = get_object_or_404(
+        MaterialShare.objects.select_related('material__onboarding__assessor'),
+        token=token,
+    )
     if not share.is_active:
         return Status(410, Error(detail='Link indisponivel'))
     if share.password_hash:
-        return Status(401, SharedGateOut(deal_name=share.material.onboarding.pipedrive_deal_name))
+        return Status(
+            401, SharedGateOut(deal_name=share.material.onboarding.pipedrive_deal_name)
+        )
     MaterialShare.objects.filter(pk=share.pk).update(
         view_count=F('view_count') + 1, last_viewed_at=timezone.now()
     )
@@ -871,12 +1143,22 @@ def view_shared(request, token: str):
     payload['grant'] = signing.dumps(token, salt='share-pdf')
     return Status(200, payload)
 
-@router.post('/share/{token}/unlock', auth=None, response={200: SharedMaterialOut, 401: SharedGateOut, 404: Error, 410: Error})
+
+@router.post(
+    '/share/{token}/unlock',
+    auth=None,
+    response={200: SharedMaterialOut, 401: SharedGateOut, 404: Error, 410: Error},
+)
 def unlock_shared(request, token: str, data: ShareUnlockIn):
-    share = get_object_or_404(MaterialShare.objects.select_related('material__onboarding__assessor'), token=token)
+    share = get_object_or_404(
+        MaterialShare.objects.select_related('material__onboarding__assessor'),
+        token=token,
+    )
     if not share.is_active:
         return Status(410, Error(detail='Link indisponivel'))
-    if not share.password_hash or not check_password(data.password, share.password_hash):
+    if not share.password_hash or not check_password(
+        data.password, share.password_hash
+    ):
         return Status(403, Error(detail='Senha incorreta'))
     MaterialShare.objects.filter(pk=share.pk).update(
         view_count=F('view_count') + 1, last_viewed_at=timezone.now()
@@ -885,7 +1167,12 @@ def unlock_shared(request, token: str, data: ShareUnlockIn):
     payload['grant'] = signing.dumps(token, salt='share-pdf')
     return Status(200, payload)
 
-@router.get('/share/{token}/token/{kind}', auth=None, response={200: None, 400: Error, 403: Error, 404: Error, 410: Error})
+
+@router.get(
+    '/share/{token}/token/{kind}',
+    auth=None,
+    response={200: None, 400: Error, 403: Error, 404: Error, 410: Error},
+)
 def shared_pdf(request, token: str, kind: str, grant: str = None):
     if kind not in {'master', 'crm', 'closing', 'qualification'}:
         return Status(400, Error(detail='kind inválido'))
@@ -906,5 +1193,3 @@ def shared_pdf(request, token: str, kind: str, grant: str = None):
     resp = HttpResponse(pdf_bytes, content_type='application/pdf')
     resp['Content-Disposition'] = f'inline; filename="{deal_slug}--{kind}.pdf"'
     return resp
-
-
