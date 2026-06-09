@@ -75,20 +75,8 @@ class OnboardingStepIn(Schema):
     posvenda_obs:          Optional[str] = None
     custom_etapas:         Optional[list[Any]] = None
     custom_fluxo:          Optional[str] = None
-    # Step 4 — Time
-    sdr:                   Optional[str] = None
-    closer:                Optional[str] = None
-    especialista:          Optional[str] = None
-    empresa_scripts:       Optional[str] = None
-    perfil_operador:       Optional[str] = None
+    # Step 4 — Fechamento
     etapas_fechamento:     Optional[list[Any]] = None
-    fech_especifico:       Optional[str] = None
-    tipo_reuniao:          Optional[str] = None
-    passagem:              Optional[str] = None
-    apresenta_preco:       Optional[str] = None
-    metodo:                Optional[list[str]] = None
-    condicao_especial:     Optional[str] = None
-    objecoes_fecha:        Optional[str] = None
     # Step 5 — Scripts
     wpp_perguntas:         Optional[str] = None
     wpp_criterio:          Optional[str] = None
@@ -112,6 +100,11 @@ class OnboardingStepIn(Schema):
     decisivo_prospeccao:   Optional[list[str]] = None
     experiencia_reuniao:   Optional[list[str]] = None
     indicador_sucesso:     Optional[str] = None
+    fonte_conteudo_outro:      Optional[str] = None
+    como_descobriu_outro:      Optional[str] = None
+    decisivo_prospeccao_outro: Optional[str] = None
+    experiencia_reuniao_outro: Optional[str] = None
+    indicador_sucesso_outro:   Optional[str] = None
 
 
 class OnboardingOut(Schema):
@@ -171,19 +164,7 @@ class OnboardingOut(Schema):
     custom_etapas:         list
     custom_fluxo:          str
     # Step 4
-    sdr:                   str
-    closer:                str
-    especialista:          str
-    empresa_scripts:       str
-    perfil_operador:       str
     etapas_fechamento:     list
-    fech_especifico:       str
-    tipo_reuniao:          str
-    passagem:              str
-    apresenta_preco:       str
-    metodo:                list
-    condicao_especial:     str
-    objecoes_fecha:        str
     # Step 5
     wpp_perguntas:         str
     wpp_criterio:          str
@@ -207,6 +188,11 @@ class OnboardingOut(Schema):
     decisivo_prospeccao:   list
     experiencia_reuniao:   list
     indicador_sucesso:     str
+    fonte_conteudo_outro:      str
+    como_descobriu_outro:      str
+    decisivo_prospeccao_outro: str
+    experiencia_reuniao_outro: str
+    indicador_sucesso_outro:   str
 
     progress: int = 0
     material_status: Optional[str] = None
@@ -350,3 +336,7 @@ class RuleWithAckOut(Schema):
     name: str
     content: str
     checked: bool
+
+
+class TranscribeOut(Schema):
+    text: str

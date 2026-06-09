@@ -14,7 +14,6 @@ def crm_context(data: dict, funil_key: str = 'default') -> dict:
     """Campos para o agente de CRM: 1 funil específico + contexto de negócio/lead."""
     base_keys = [
         'nome_empresa', 'nicho', 'produto', 'tipo_venda', 'ticket', 'modelo_venda', 'como_vende',
-        'sdr', 'closer', 'especialista', 'perfil_operador',
         'perfil_lead', 'dor_principal', 'tom',
         'gatilho_urgencia', 'caso_sucesso',
     ]
@@ -65,14 +64,12 @@ def crm_context(data: dict, funil_key: str = 'default') -> dict:
     }
 
 def closing_context(data: dict) -> dict:
-     """Campos para o agente de fechamento: closer, objeções, método, gatilhos."""
+     """Campos para o agente de fechamento: objeções, etapas, gatilhos."""
      keys = [
          'nome_empresa', 'nicho', 'produto', 'tipo_venda', 'ticket', 'modelo_venda',
-         'closer', 'especialista',
          'perfil_lead', 'dor_principal', 'objecoes',
          'caso_sucesso', 'gatilho_urgencia', 'tom',
-         'metodo', 'tipo_reuniao', 'apresenta_preco', 'condicao_especial', 'objecoes_fecha',
-         'fech_estrutura', 'etapas_fechamento', 'fech_especifico', 'passagem',
+         'etapas_fechamento',
      ]
      return {k: data[k] for k in keys if k in data}
 
@@ -80,7 +77,6 @@ def qual_context(data: dict) -> dict:
     """Campos para o agente de qualificação: SDR, perguntas, perfil lead."""
     keys = [
         'nome_empresa', 'nicho', 'produto', 'tipo_venda',
-        'sdr', 'closer',
         'perfil_lead', 'dor_principal', 'objecoes', 'tom',
         'caso_sucesso', 'gatilho_urgencia',
         'wpp_perguntas', 'wpp_criterio', 'wpp_desqualifica', 'wpp_proximo',

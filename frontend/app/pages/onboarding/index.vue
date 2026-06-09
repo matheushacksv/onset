@@ -6,41 +6,58 @@
         <p class="text-xs text-neutral-500 tracking-widest uppercase mb-1">Módulo</p>
         <h1 class="text-2xl font-semibold text-neutral-900 dark:text-white tracking-tight">Onboarding</h1>
       </div>
-      <div v-if="!isDesenvolvedor" ref="newMenuRef" class="relative">
+      <div class="flex items-center gap-2">
+        <div v-if="!isDesenvolvedor" ref="newMenuRef" class="relative">
+          <button
+            class="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-50"
+            :disabled="loadingDeals || creatingBlank"
+            @click="newMenuOpen = !newMenuOpen"
+          >
+            <svg v-if="loadingDeals || creatingBlank" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Novo
+            <svg class="w-3 h-3 transition-transform" :class="newMenuOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <div
+            v-show="newMenuOpen"
+            class="absolute right-0 top-full mt-1 bg-neutral-900 ring-1 ring-white/10 rounded-xl py-1 min-w-64 z-50 shadow-xl"
+          >
+            <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewWithDeal">
+              <p class="font-medium">Onboarding com deal</p>
+              <p class="text-[11px] text-white/40">Vincula a um deal do Pipedrive</p>
+            </button>
+            <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewBlank">
+              <p class="font-medium">Material em branco (IA)</p>
+              <p class="text-[11px] text-white/40">Abre editor direto, sem deal nem formulário</p>
+            </button>
+            <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onCloneExisting">
+              <p class="font-medium">Duplicar material existente</p>
+              <p class="text-[11px] text-white/40">Clona conteúdo de outro material publicado</p>
+            </button>
+          </div>
+        </div>
         <button
-          class="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-50"
-          :disabled="loadingDeals || creatingBlank"
-          @click="newMenuOpen = !newMenuOpen"
+          v-if="user?.is_superuser"
+          class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium border border-white/[0.08] rounded-full hover:bg-white/5 transition-all disabled:opacity-40"
+          :disabled="creatingTest"
+          @click="handleCreateTest"
         >
-          <svg v-if="loadingDeals || creatingBlank" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+          <svg v-if="creatingTest" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
           </svg>
-          <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          <svg v-else class="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 0 1-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 0 1 4.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0 1 12 15a9.065 9.065 0 0 0-6.23.693L5 14.5m14.8.8 1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0 1 12 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
           </svg>
-          Novo
-          <svg class="w-3 h-3 transition-transform" :class="newMenuOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          Teste
         </button>
-        <div
-          v-show="newMenuOpen"
-          class="absolute right-0 top-full mt-1 bg-neutral-900 ring-1 ring-white/10 rounded-xl py-1 min-w-64 z-50 shadow-xl"
-        >
-          <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewWithDeal">
-            <p class="font-medium">Onboarding com deal</p>
-            <p class="text-[11px] text-white/40">Vincula a um deal do Pipedrive</p>
-          </button>
-          <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewBlank">
-            <p class="font-medium">Material em branco (IA)</p>
-            <p class="text-[11px] text-white/40">Abre editor direto, sem deal nem formulário</p>
-          </button>
-          <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onCloneExisting">
-            <p class="font-medium">Duplicar material existente</p>
-            <p class="text-[11px] text-white/40">Clona conteúdo de outro material publicado</p>
-          </button>
-        </div>
       </div>
     </div>
 
@@ -239,7 +256,7 @@ if (!hasRole('Assessor') && !hasRole('Desenvolvedor')) await navigateTo('/')
 
 const isDesenvolvedor = computed(() => user.value?.role?.includes('Desenvolvedor') && !user.value?.is_superuser)
 
-import { cleanDealName } from '~/composables/useOnboarding'
+import { cleanDealName, generateFakeForm } from '~/composables/useOnboarding'
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Rascunho',
@@ -378,6 +395,27 @@ const onCloneExisting = () => {
 const onCloned = async (newId: number) => {
   cloneOpen.value = false
   await navigateTo(`/onboarding/${newId}/materials`)
+}
+
+const creatingTest = ref(false)
+const handleCreateTest = async () => {
+  creatingTest.value = true
+  try {
+    const { id } = await fetchAuth<{ id: number }>('/api/onboarding/', {
+      method: 'POST',
+      body: { pipedrive_deal_name: '🧪 Teste — Tech Solutions' },
+    })
+    const fake = generateFakeForm()
+    const payload: Record<string, unknown> = {}
+    for (const k of Object.keys(fake)) {
+      const v = (fake as any)[k]
+      if (v !== undefined) payload[k] = v
+    }
+    await fetchAuth(`/api/onboarding/${id}`, { method: 'PATCH', body: payload })
+    await navigateTo(`/onboarding/${id}`)
+  } finally {
+    creatingTest.value = false
+  }
 }
 
 onMounted(() => {

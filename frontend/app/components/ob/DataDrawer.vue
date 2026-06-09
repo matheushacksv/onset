@@ -90,22 +90,6 @@ const SECTIONS: { key: string; title: string; fields: FieldDef[] }[] = [
     ],
   },
   {
-    key: 'time', title: 'Time & Fechamento',
-    fields: [
-      { label: 'SDR', key: 'sdr' },
-      { label: 'Closer', key: 'closer' },
-      { label: 'Especialista', key: 'especialista' },
-      { label: 'Empresa de scripts', key: 'empresa_scripts' },
-      { label: 'Perfil do operador', key: 'perfil_operador' },
-      { label: 'Tipo de reunião', key: 'tipo_reuniao' },
-      { label: 'Passagem', key: 'passagem' },
-      { label: 'Apresenta preço', key: 'apresenta_preco' },
-      { label: 'Método', key: 'metodo' },
-      { label: 'Condição especial', key: 'condicao_especial' },
-      { label: 'Objeções de fechamento', key: 'objecoes_fecha' },
-    ],
-  },
-  {
     key: 'scripts', title: 'Scripts',
     fields: [
       { label: 'WhatsApp — perguntas', key: 'wpp_perguntas' },

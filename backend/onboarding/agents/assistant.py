@@ -15,9 +15,7 @@ from .prompts import (
     QUAL_PROMPT,
 )
 from .contexts_functions import crm_context, closing_context, qual_context, onboarding_to_dict
-
-
-VALID_CHANNELS = {'whatsapp', 'ligação', 'email', 'auto'}
+from .schemas import CANONICAL_CHANNELS as VALID_CHANNELS
 
 
 class AssistantSession:
@@ -209,7 +207,7 @@ class AssistantSession:
 
         def fill_cadence(funnel_key: str, stage_idx: int, days: list[dict]) -> str:
             """Substitui a cadência inteira de uma etapa.
-            days = [{"day": 1, "actions": [{"channel": "whatsapp"|"ligação"|"email"|"auto", "message": "...", "instructions": "..."}]}]
+            days = [{"day": 1, "actions": [{"channel": "whatsapp"|"ligacao"|"email"|"sms"|"atividade", "message": "...", "instructions": "..."}]}]
             """
             stage = _stage(funnel_key, stage_idx)
             normalized = []

@@ -3,8 +3,16 @@ from ninja import Schema
 from datetime import datetime
 
 #* CRM
+# Canais válidos de cadência. Fonte ÚNICA — importado por tasks.py (sanitize do CRM gerado)
+# e assistant.py (validação das tools do chat). Bate com o <select> do front.
+CANONICAL_CHANNELS = {'whatsapp', 'ligacao', 'email', 'sms', 'atividade'}
+
+
 class CadenceAction(Schema):
-    channel: Literal['whatsapp','ligação','email','auto']
+    # Canônico: whatsapp | ligacao | email | sms | atividade (bate com o <select> do front
+    # e CANONICAL_CHANNELS em tasks.py). str (não Literal) pra não quebrar a leitura de
+    # materiais legados que tenham valor fora do conjunto; o sanitize no save normaliza.
+    channel: str
     message: str
     instructions: Optional[str] = None
 
@@ -103,3 +111,12 @@ class AssistantOut(Schema):
     section: str
     value: dict
     changes: list[str]
+
+class ScriptSuggestionOut(Schema):
+    wpp_perguntas: str
+    wpp_criterio: str
+    wpp_desqualifica: str
+    wpp_proximo: str
+    lig_pitch: str
+    lig_perguntas: str
+    lig_objecoes: str

@@ -1,4 +1,7 @@
 import asyncio
+import re
+
+from .agents.schemas import CANONICAL_CHANNELS
 
 
 def reconcile_recordings():
@@ -78,6 +81,29 @@ def prewarm_assistant_task(material_id: int):
         log.exception(f'[prewarm] FAILED material_id={material_id}: {e}')
 
 
+# Rótulos que o modelo às vezes prefixa no texto da mensagem (devem sair do `message`).
+_MSG_LABEL_RE = re.compile(r'^\s*(?:script final|script sugerido|script|mensagem)\s*:\s*', re.IGNORECASE)
+
+
+def _sanitize_crm(crm: dict) -> dict:
+    """Normaliza o CRM gerado pela IA antes de salvar.
+
+    - Coage qualquer `channel` fora do conjunto canônico para 'atividade' (pega tokens crus
+      do knowledge base como 'sem_acoes'/'mover_para_prospeccao' e legados 'ligação'/'auto').
+    - Tira rótulos como "Script Final:" do início do `message` (o campo é só o texto).
+    """
+    for funnel in crm.get('funnels', []):
+        for stage in funnel.get('stages', []):
+            for day in stage.get('cadence', []):
+                for action in day.get('actions', []):
+                    if action.get('channel') not in CANONICAL_CHANNELS:
+                        action['channel'] = 'atividade'
+                    msg = action.get('message')
+                    if isinstance(msg, str):
+                        action['message'] = _MSG_LABEL_RE.sub('', msg, count=1)
+    return crm
+
+
 def generate_materials_task(onboarding_id: int):
     from .models import OnboardingForm, GeneratedMaterial
     from .agents.workflow import MaterialWorkflow, onboarding_to_dict
@@ -90,7 +116,7 @@ def generate_materials_task(onboarding_id: int):
     try:
         workflow = MaterialWorkflow()
         result = asyncio.run(workflow.arun(onboarding_to_dict(onboarding)))
-        material.crm = result.crm.model_dump()
+        material.crm = _sanitize_crm(result.crm.model_dump())
         material.closing = result.closing.model_dump()
         material.qualification = result.qualification.model_dump()
         material.quality_alerts = result.quality_alerts

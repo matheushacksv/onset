@@ -31,3 +31,5 @@ formulario-modelo.html
 .DS_Store
 .fleet
 .idea
+
+docker-compose.override.yml

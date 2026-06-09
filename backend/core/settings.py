@@ -174,8 +174,9 @@ CACHES = {
 Q_CLUSTER = {
     'name': 'plataforma',
     'workers': 2,
-    'timeout': 60,
-    'retry': 120,
+    'timeout': 300,
+    'retry': 600,
+    'max_attempts': 1,
     'orm': 'default'
 }
 

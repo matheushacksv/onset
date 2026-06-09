@@ -159,7 +159,9 @@
 
     <!-- Content -->
     <main class="flex-1 ml-14">
-      <slot />
+      <ClientOnly>
+        <slot />
+      </ClientOnly>
     </main>
   </div>
 </template>

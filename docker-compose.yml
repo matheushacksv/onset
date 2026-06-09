@@ -11,6 +11,18 @@ services:
       interval: 5s
       retries: 5
 
+  knowledge-builder:
+    build: ./backend
+    command: uv run python manage.py build_knowledge
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure:5
+    networks:
+      - default
+
   redis:
     image: redis:7-alpine
     volumes:

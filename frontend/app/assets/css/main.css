@@ -50,3 +50,6 @@ html:not(.dark) .placeholder-white\/20::placeholder { color: rgb(10 10 10 / 0.30
 /* --- scrollbar utility --- */
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* --- native <select> dropdown list: match dark theme --- */
+html.dark select option { background-color: #0a0a0a; color: #fff; }
