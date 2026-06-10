@@ -640,6 +640,9 @@ def pipedrive_activity_webhook(request):
         owner_google_email=mapping.google_email,
         dest_folder_id=dest_folder_id,
     )
+    # On-demand: agenda a rodada de reconcile (sem Schedule perpétuo no worker).
+    from .tasks import arm_reconcile
+    arm_reconcile()
     return Status(200, {'queued': True, 'meet_code': meet_code})
 
 
