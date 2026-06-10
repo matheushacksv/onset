@@ -4,13 +4,42 @@ import re
 from .agents.schemas import CANONICAL_CHANNELS
 
 
+def arm_reconcile(delay_minutes: int | None = None):
+    """(Re)agenda UMA rodada de reconcile_recordings via django-q (ONCE).
+
+    Substitui o Schedule perpétuo: a fila só é varrida quando há job pendente.
+    `update_or_create` por nome coalesce múltiplos webhooks/re-arms numa única
+    rodada agendada (evita duplicar). ONCE + repeats=-1 → django-q deleta o
+    Schedule após disparar (scheduler.py), então a cadeia para sozinha quando a
+    fila drena. Idle = zero task no worker.
+    """
+    from datetime import timedelta
+    from decouple import config
+    from django.utils import timezone
+    from django_q.models import Schedule
+
+    if delay_minutes is None:
+        delay_minutes = config('RECORDING_JOB_POLL_MIN', cast=int, default=60)
+    Schedule.objects.update_or_create(
+        name='reconcile_recordings',
+        defaults={
+            'func': 'onboarding.tasks.reconcile_recordings',
+            'schedule_type': Schedule.ONCE,
+            'next_run': timezone.now() + timedelta(minutes=delay_minutes),
+            'repeats': -1,
+        },
+    )
+
+
 def reconcile_recordings():
     """Processa RecordingJobs pendentes: acha a gravação no Drive do assessor e
-    move pra pasta do cliente. Rodado periodicamente pelo Schedule do django-q.
+    move pra pasta do cliente. Disparado on-demand pelo webhook (arm_reconcile) e
+    se re-agenda enquanto sobrar job pendente.
 
-    Idempotente e restart-safe: cada tentativa é curta (respeita timeout=60s do
-    Q_CLUSTER). Gravação do Meet demora minutos a aparecer, então re-tenta a cada
-    execução até achar ou estourar RECORDING_JOB_TIMEOUT_MIN.
+    Idempotente e restart-safe: cada tentativa é curta. Gravação do Meet demora
+    minutos a aparecer, então só varre jobs com idade ≥ RECORDING_JOB_MIN_AGE_MIN
+    (evita chamadas ao Drive garantidamente vazias) e re-tenta até achar ou estourar
+    RECORDING_JOB_TIMEOUT_MIN.
     """
     import logging
     from datetime import timedelta
@@ -20,10 +49,18 @@ def reconcile_recordings():
     from . import google_services, pipedrive_services
 
     log = logging.getLogger(__name__)
-    timeout_min = config('RECORDING_JOB_TIMEOUT_MIN', cast=int, default=120)
-    deadline = timezone.now() - timedelta(minutes=timeout_min)
+    now = timezone.now()
+    # Sem pressa: gravação longa (1-4h) processa em horas; arquivar no dia seguinte
+    # é aceitável. Timeout 48h cobre folga; checa de hora em hora.
+    timeout_min = config('RECORDING_JOB_TIMEOUT_MIN', cast=int, default=2880)
+    min_age_min = config('RECORDING_JOB_MIN_AGE_MIN', cast=int, default=30)
+    deadline = now - timedelta(minutes=timeout_min)
+    ready_before = now - timedelta(minutes=min_age_min)
 
-    for job in RecordingJob.objects.filter(status=RecordingJob.Status.PENDING):
+    # Só jobs maduros: gravação do Meet não aparece nos primeiros minutos.
+    for job in RecordingJob.objects.filter(
+        status=RecordingJob.Status.PENDING, created_at__lte=ready_before
+    ):
         job.attempts += 1
         try:
             file_id = google_services.find_recording(job.owner_google_email, job.meet_code)
@@ -46,6 +83,11 @@ def reconcile_recordings():
                 job.status = RecordingJob.Status.FAILED
             log.exception(f'[reconcile] erro job={job.id}: {e}')
         job.save()
+
+    # Re-arma enquanto sobrar qualquer pendente (inclui jobs ainda jovens, abaixo
+    # do min_age). Sem pendente → nada agendado → worker em silêncio.
+    if RecordingJob.objects.filter(status=RecordingJob.Status.PENDING).exists():
+        arm_reconcile()
 
 
 def _notify(pipedrive_services, deal_id: int, content: str):
