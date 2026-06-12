@@ -11,13 +11,17 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   app: {
     head: {
-      title: 'Onset — Plataforma',
-      titleTemplate: '%s · Onset',
+      title: 'Onboarding — Grupo Enriquecedor',
+      titleTemplate: '%s · Grupo Enriquecedor',
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icon-192.png' },
+        { rel: 'icon', type: 'image/png', sizes: '512x512', href: '/icon-512.png' },
+        { rel: 'shortcut icon', href: '/favicon.ico' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
       ],
       meta: [
-        { name: 'description', content: 'Plataforma interna Onset' },
+        { name: 'description', content: 'Plataforma interna Grupo Enriquecedor' },
       ],
     },
   },
