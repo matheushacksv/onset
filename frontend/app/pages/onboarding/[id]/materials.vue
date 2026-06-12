@@ -65,6 +65,54 @@
           >
             {{ materialsGenerating ? 'Gerando...' : 'Regenerar' }}
           </button>
+          <!-- Tema do compartilhamento: ícone abre menu com lista + preview -->
+          <div
+            v-if="!isDesenvolvedor && materials?.status === 'complete'"
+            class="relative"
+          >
+            <button
+              type="button"
+              title="Tema do compartilhamento"
+              class="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-white/50 hover:text-white/80 border border-white/10 rounded-lg transition-all"
+              @click="themeMenuOpen = !themeMenuOpen"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
+              </svg>
+              <span class="w-3 h-3 rounded-full ring-1 ring-white/20 shrink-0" :style="{ background: activeTheme.swatch.accent }" />
+            </button>
+
+            <template v-if="themeMenuOpen">
+              <!-- backdrop fecha ao clicar fora -->
+              <div class="fixed inset-0 z-40" @click="themeMenuOpen = false; previewKey = null" />
+              <div
+                class="absolute right-0 top-full mt-2 z-50 rounded-xl bg-neutral-900 ring-1 ring-white/10 shadow-2xl p-3 flex gap-3 max-w-[calc(100vw-2rem)]"
+                @mouseleave="previewKey = null"
+              >
+                <ul class="space-y-0.5 w-36 shrink-0 overflow-y-auto max-h-[60vh]">
+                  <li v-for="th in shareThemes" :key="th.key">
+                    <button
+                      type="button"
+                      :disabled="savingTheme"
+                      class="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left text-sm transition-colors disabled:opacity-50"
+                      :class="(materials?.theme || 'warm') === th.key ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white/90'"
+                      @mouseenter="previewKey = th.key"
+                      @click="setTheme(th.key)"
+                    >
+                      <span class="w-4 h-4 rounded-full ring-1 ring-white/20 flex items-center justify-center shrink-0" :style="{ background: th.swatch.bg }">
+                        <span class="w-1.5 h-1.5 rounded-full" :style="{ background: th.swatch.accent }" />
+                      </span>
+                      <span class="truncate">{{ th.name }}</span>
+                      <svg v-if="(materials?.theme || 'warm') === th.key" class="w-3.5 h-3.5 ml-auto shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                      </svg>
+                    </button>
+                  </li>
+                </ul>
+                <ObSharePreview :theme="previewTheme" class="hidden sm:block" />
+              </div>
+            </template>
+          </div>
           <button
             v-if="!isDesenvolvedor && materials?.status === 'complete'"
             class="px-3 py-1.5 text-sm text-white/50 hover:text-white/80 border border-white/10 rounded-lg transition-all"
@@ -582,6 +630,7 @@
 
 <script setup lang="ts">
 import type { MaterialOut } from '~/composables/useOnboarding'
+import { SHARE_THEME_LIST, getShareTheme } from '~/utils/shareThemes'
 
 definePageMeta({ layout: false })
 
@@ -593,6 +642,21 @@ const {
   createManualMaterial, copyMaterialFrom, loadMaterialLibrary, prepareAssistant,
   publishMaterial, dealId, dealName, assessorName, load, form,
 } = useOnboarding(id)
+
+// Tema do compartilhamento — 1 clique seleciona + salva (saveMaterials atualiza materials.value).
+const shareThemes = SHARE_THEME_LIST
+const savingTheme = ref(false)
+const setTheme = async (key: string) => {
+  if (savingTheme.value || (materials.value?.theme || 'warm') === key) return
+  savingTheme.value = true
+  try { await saveMaterials({ theme: key }) } finally { savingTheme.value = false }
+}
+// Menu de temas (ícone) + preview ao lado.
+const themeMenuOpen = ref(false)
+const activeTheme = computed(() => getShareTheme(materials.value?.theme))
+// Preview: tema sob o cursor na lista; sem hover, o tema atual do material.
+const previewKey = ref<string | null>(null)
+const previewTheme = computed(() => getShareTheme(previewKey.value ?? materials.value?.theme))
 
 const attachOpen = ref(false)
 const onAttached = (deal: { id: number; title: string }) => {

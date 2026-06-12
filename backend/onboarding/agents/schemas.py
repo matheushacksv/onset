@@ -83,11 +83,13 @@ class MaterialOut(Schema):
     created_at: datetime
     published: bool = False
     published_at: Optional[datetime] = None
+    theme: str = 'warm'
 
 class MaterialPatchIn(Schema):
     crm: Optional[CRMScript] = None
     closing: Optional[ClosingMaterial] = None
     qualification: Optional[QualificationScript] = None
+    theme: Optional[str] = None
 
 #* ----- Assistant -----
 

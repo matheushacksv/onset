@@ -149,6 +149,7 @@ class GeneratedMaterial(models.Model):
     closing = models.JSONField(null=True, blank=True)
     qualification = models.JSONField(null=True, blank=True)
     quality_alerts = models.JSONField(default=list)
+    theme = models.CharField(max_length=32, default='warm')
     error = models.TextField(blank=True)
     published = models.BooleanField(default=False)
     published_at = models.DateTimeField(null=True, blank=True)

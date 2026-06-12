@@ -7,6 +7,7 @@ export interface SharedMaterial {
   crm?: CRMScript
   closing?: ClosingMaterial
   qualification?: QualificationScript
+  theme?: string
   grant?: string | null
 }
 
