@@ -311,6 +311,7 @@ class SharedMaterialOut(Schema):
     crm: Optional[Any] = None
     closing: Optional[Any] = None
     qualification: Optional[Any] = None
+    theme: str = 'warm'
     grant: Optional[str] = None
 
 class DuplicateOnboardingIn(Schema):

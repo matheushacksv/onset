@@ -65,6 +65,9 @@ from .schemas import (
 
 router = Router(tags=['Onboarding'])
 
+# Keys de tema do share válidas (espelha frontend/app/utils/shareThemes.ts).
+VALID_THEMES = {'warm', 'midnight', 'azul', 'mono', 'oceano', 'bordo', 'roxo', 'dourado'}
+
 
 def _is_desenvolvedor(user) -> bool:
     return user.groups.filter(name='Desenvolvedor').exists() and not user.is_superuser
@@ -838,6 +841,9 @@ def update_materials(request, id: int, data: MaterialPatchIn):
     material = get_object_or_404(GeneratedMaterial, onboarding_id=id)
     fields = data.model_dump(exclude_none=True)
 
+    if 'theme' in fields and fields['theme'] not in VALID_THEMES:
+        fields['theme'] = 'warm'
+
     for field, value in fields.items():
         setattr(material, field, value)
     material.save()
@@ -1051,6 +1057,7 @@ def _shared_payload(material):
         'crm': _strip_internal(material.crm),
         'closing': material.closing,
         'qualification': material.qualification,
+        'theme': material.theme,
     }
 
 

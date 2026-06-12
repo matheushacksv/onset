@@ -19,6 +19,7 @@ export interface MaterialOut {
   created_at: string
   published: boolean
   published_at: string | null
+  theme?: string
 }
 
 export interface MaterialLibraryItem {
@@ -410,7 +411,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     return data
   }
 
-  const saveMaterials = async (patch: Partial<Pick<MaterialOut, 'crm' | 'closing' | 'qualification'>>) => {
+  const saveMaterials = async (patch: Partial<Pick<MaterialOut, 'crm' | 'closing' | 'qualification' | 'theme'>>) => {
     const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials`, {
       method: 'PATCH',
       body: patch,
