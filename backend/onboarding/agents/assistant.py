@@ -67,7 +67,7 @@ class AssistantSession:
         Popula cache OpenAI sem disparar tool calls/searches."""
         instructions, _ = self._build_instructions_and_tools()
         return Agent(
-            model=OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY')),
+            model=OpenAIChat('gpt-5.4-mini', api_key=config('OPENAI_API_KEY')),
             instructions=instructions,
             markdown=False,
         )
