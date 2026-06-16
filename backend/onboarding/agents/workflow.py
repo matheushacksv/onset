@@ -140,9 +140,11 @@ def _has_ctrl(content) -> bool:
     return bool(_CTRL_RE.search(s))
 
 
-async def _arun_clean(agent: Agent, payload: str, attempts: int = 3):
+async def _arun_clean(agent: Agent, payload: str, attempts: int = 2):
     """Roda o agent; se o output tiver chars de controle, re-roda até `attempts` vezes.
-    Retorna a primeira resposta limpa (ou a última tentativa se nenhuma limpar)."""
+    Retorna a primeira resposta limpa (ou a última tentativa se nenhuma limpar).
+    attempts baixo de propósito: cada re-roll soma latência e a task tem timeout (Q_CLUSTER).
+    O strip em tasks._strip_ctrl é a rede de segurança final se o re-roll não limpar."""
     resp = await agent.arun(payload)
     for _ in range(attempts - 1):
         if not _has_ctrl(resp.content):
@@ -155,13 +157,12 @@ class MaterialWorkflow:
     def __init__(self):
         knowledge = get_knowledge()
 
+        # Validator só audita o INPUT do form (campos preenchidos/qualidade) contra critérios
+        # fixos do prompt — não precisa de knowledge (KB é exemplo de script, irrelevante aqui).
+        # Sem search_knowledge → 1 call só, não um loop agêntico. Grande economia de tempo.
         self.validator = Agent(
             model=MODEL,
             instructions=VALIDATOR_PROMPT,
-            knowledge=knowledge,
-            add_knowledge_to_context=True,
-            search_knowledge=True,
-            read_tool_call_history=True,
             markdown=True,
             output_schema=QualityAlerts,
         )
@@ -194,9 +195,6 @@ class MaterialWorkflow:
         )
 
     async def arun(self, onboarding_data: dict) -> GeneratedMaterialResult:
-        val_resp = await self.validator.arun(json.dumps(onboarding_data))
-        alerts: list[str] = val_resp.content.alerts if val_resp.content else []
-
         funis: list[str] = onboarding_data.get('funis') or []
         if not funis:
             funis = ['default']
@@ -208,13 +206,17 @@ class MaterialWorkflow:
             for k in funis
         ]
 
-        crm_results, closing, qual = await asyncio.gather(
+        # Validator roda EM PARALELO com os content agents — seu output (alerts) é
+        # independente, não alimenta crm/closing/qual. Antes serializava antes de tudo.
+        val_resp, crm_results, closing, qual = await asyncio.gather(
+            self.validator.arun(json.dumps(onboarding_data)),
             asyncio.gather(*crm_tasks),
             _arun_clean(
                 self.closing_agent, json.dumps(closing_context(onboarding_data))
             ),
             _arun_clean(self.qual_agent, json.dumps(qual_context(onboarding_data))),
         )
+        alerts: list[str] = val_resp.content.alerts if val_resp.content else []
         funnels = []
         for key, resp in zip(funis, crm_results):
             stages = resp.content.funnels[0].stages if resp.content.funnels else []
