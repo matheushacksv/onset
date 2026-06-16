@@ -119,9 +119,10 @@ FUNIL_LABELS = {
 }
 
 
-# temperature baixa: reduz a variância do sampling (e a chance do quirk de chars de
-# controle abaixo). gpt-5.4-nano aceita != 1.
-MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'), temperature=0.2)
+# temperatura no default (não setar baixa): o retry em _arun_clean precisa de variância —
+# re-roll só limpa o \x7f se sair diferente. temperatura baixa re-produz o mesmo \x7f e só
+# desperdiça o re-run. Default = retry efetivo (conserta no 1º re-roll) + sem custo extra.
+MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'))
 
 
 # gpt-5.4-nano às vezes emite chars de controle (ex.: \x7f no lugar de acento) — quirk de
