@@ -129,8 +129,10 @@ _MSG_LABEL_RE = re.compile(r'^\s*(?:script final|script sugerido|script|mensagem
 
 # Postgres jsonb/text NÃO armazena U+0000 (NUL) — o modelo às vezes injeta NUL no meio
 # de uma string e o save() estoura `unsupported Unicode escape sequence`. Tira NUL + demais
-# control chars C0 (exceto \t \n \r) de toda string, recursivamente.
-_CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+# control chars C0 (exceto \t \n \r), DEL e C1 de toda string, recursivamente.
+# DEL/C1 (\x7f-\x9f): gpt-5.4-nano às vezes emite \x7f no lugar de acento → vira tofu no PDF.
+# Rede de segurança caso o retry em workflow.py não tenha conseguido limpar (strip > tofu).
+_CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]')
 
 
 def _strip_ctrl(value):
