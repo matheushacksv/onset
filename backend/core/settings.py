@@ -174,8 +174,11 @@ CACHES = {
 Q_CLUSTER = {
     'name': 'plataforma',
     'workers': 2,
-    'timeout': 300,
-    'retry': 600,
+    # Geração de material (4 agents + knowledge) é lenta em prod (CPU + latência OpenAI +
+    # retry-on-control-char). 300s estourava. retry SEMPRE > timeout senão outro worker
+    # re-pega a task ainda rodando e duplica a geração.
+    'timeout': 900,
+    'retry': 1200,
     'max_attempts': 1,
     'orm': 'default'
 }
