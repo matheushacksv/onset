@@ -108,7 +108,7 @@ class AssistantSession:
             '\n\nFLUXO OBRIGATÓRIO POR TURNO:'
             '\n1. Se for gerar conteúdo novo (mensagem, script, cadência, objeção, perguntas): PRIMEIRO chame search_knowledge com 1-3 termos relevantes pra buscar exemplos reais da casa.'
             '\n2. Use os exemplos como referência de tom/estrutura, MAS gere conteúdo personalizado pro contexto do onboarding atual.'
-            '\n3. Aplique as mudanças USANDO AS TOOLS. Prefira tools que aceitam listas (fill_cadence, set_whatsapp_flow, set_diagnostic_questions, set_advance_criteria) pra fazer mais em 1 chamada.'
+            '\n3. Aplique as mudanças USANDO AS TOOLS. Prefira tools que aceitam listas (fill_cadence, set_steps, set_diagnostic_questions, set_advance_criteria, set_meeting_structure) pra fazer mais em 1 chamada.'
             '\n4. Após aplicar, responda em UMA frase curta natural descrevendo o que fez. Sem JSON. Sem markdown. Sem código.'
             '\n\nSe o usuário pedir algo ambíguo (ex: "essa etapa" sem foco), pergunte qual antes de chamar tools.'
         )
@@ -315,7 +315,34 @@ class AssistantSession:
         draft.setdefault('diagnostic_questions', [])
         draft.setdefault('objection_matrix', [])
         draft.setdefault('price_presentation', '')
-        draft.setdefault('closing_script', '')
+        draft.setdefault('meeting_structure', [])
+
+        # Normalizadores — garantem o shape rico (bate com agents/schemas.py
+        # MeetingBlock/MeetingNote) pro editor e o render do playbook não quebrarem.
+        def _norm_block(b: dict) -> dict:
+            kind = b.get('kind') or 'falar'
+            if kind not in ('falar', 'ouvir', 'fazer'):
+                kind = 'falar'
+            pts = b.get('points') or []
+            return {
+                'kind': kind,
+                'label': b.get('label') or '',
+                'open': b.get('open') or '',
+                'points': [str(p) for p in pts],
+                'close': b.get('close') or '',
+            }
+
+        def _norm_note(n: dict) -> dict:
+            kind = n.get('kind') or 'alerta'
+            if kind not in ('alerta', 'pausa', 'pergunta_chave', 'validacao'):
+                kind = 'alerta'
+            return {'kind': kind, 'title': n.get('title') or '', 'text': n.get('text') or ''}
+
+        def _step(idx: int) -> dict:
+            steps = draft['meeting_structure']
+            if idx < 0 or idx >= len(steps):
+                raise ValueError(f"idx {idx} fora de range")
+            return steps[idx]
 
         def set_diagnostic_questions(questions: list[str]) -> str:
             """Substitui a lista inteira de perguntas de diagnóstico."""
@@ -383,10 +410,72 @@ class AssistantSession:
             self._log("Apresentação de preço atualizada")
             return 'ok'
 
-        def set_closing_script(text: str) -> str:
-            """Define o script completo de fechamento."""
-            draft['closing_script'] = text
-            self._log("Script de fechamento atualizado")
+        def set_meeting_structure(steps: list[dict]) -> str:
+            """Substitui a estrutura inteira da reunião (playbook de fechamento).
+
+            Cada step: {num, title, phase, subtitle, blocks, notes}.
+            - blocks: lista de {kind: 'falar'|'ouvir'|'fazer', label, open, points: list[str], close}.
+            - notes: lista de {kind: 'alerta'|'pausa'|'pergunta_chave'|'validacao', title, text}.
+            Use 1 chamada pra montar o playbook todo de uma vez.
+            """
+            norm = []
+            for i, s in enumerate(steps):
+                norm.append({
+                    'num': str(s.get('num') or f'{i + 1:02d}'),
+                    'title': s.get('title') or '',
+                    'phase': s.get('phase') or '',
+                    'subtitle': s.get('subtitle') or '',
+                    'blocks': [_norm_block(b) for b in (s.get('blocks') or [])],
+                    'notes': [_norm_note(n) for n in (s.get('notes') or [])],
+                })
+            draft['meeting_structure'] = norm
+            self._log(f"{len(norm)} etapas da reunião definidas")
+            return 'ok'
+
+        def add_meeting_step(num: str, title: str, phase: str = '', subtitle: str = '') -> str:
+            """Adiciona uma etapa (sem blocos/notas) ao final da reunião. Use set_step_blocks/set_step_notes depois."""
+            draft['meeting_structure'].append({
+                'num': str(num or f"{len(draft['meeting_structure']) + 1:02d}"),
+                'title': title or '', 'phase': phase or '', 'subtitle': subtitle or '',
+                'blocks': [], 'notes': [],
+            })
+            self._log(f"Etapa '{title}' adicionada")
+            return 'ok'
+
+        def update_meeting_step(
+            idx: int,
+            num: Optional[str] = None,
+            title: Optional[str] = None,
+            phase: Optional[str] = None,
+            subtitle: Optional[str] = None,
+        ) -> str:
+            """Atualiza os campos de cabeçalho de uma etapa (não mexe em blocks/notes)."""
+            st = _step(idx)
+            for k, v in {'num': num, 'title': title, 'phase': phase, 'subtitle': subtitle}.items():
+                if v is not None:
+                    st[k] = str(v) if k == 'num' else v
+            self._log(f"Etapa '{st.get('title')}' atualizada")
+            return 'ok'
+
+        def remove_meeting_step(idx: int) -> str:
+            """Remove uma etapa da reunião pelo índice."""
+            st = _step(idx)
+            draft['meeting_structure'].pop(idx)
+            self._log(f"Etapa '{st.get('title')}' removida")
+            return 'ok'
+
+        def set_step_blocks(step_idx: int, blocks: list[dict]) -> str:
+            """Substitui os blocos de uma etapa. blocks: {kind: 'falar'|'ouvir'|'fazer', label, open, points: list[str], close}."""
+            st = _step(step_idx)
+            st['blocks'] = [_norm_block(b) for b in blocks]
+            self._log(f"{len(st['blocks'])} blocos definidos na etapa '{st.get('title')}'")
+            return 'ok'
+
+        def set_step_notes(step_idx: int, notes: list[dict]) -> str:
+            """Substitui os avisos de uma etapa. notes: {kind: 'alerta'|'pausa'|'pergunta_chave'|'validacao', title, text}."""
+            st = _step(step_idx)
+            st['notes'] = [_norm_note(n) for n in notes]
+            self._log(f"{len(st['notes'])} avisos definidos na etapa '{st.get('title')}'")
             return 'ok'
 
         def set_special_condition(text: Optional[str]) -> str:
@@ -403,7 +492,12 @@ class AssistantSession:
             update_objection,
             remove_objection,
             set_price_presentation,
-            set_closing_script,
+            set_meeting_structure,
+            add_meeting_step,
+            update_meeting_step,
+            remove_meeting_step,
+            set_step_blocks,
+            set_step_notes,
             set_special_condition,
         ]
 
@@ -411,14 +505,46 @@ class AssistantSession:
 
     def _build_qual_tools(self) -> list:
         draft = self.draft
-        draft.setdefault('whatsapp_flow', [])
+        draft.setdefault('steps', [])
         draft.setdefault('advance_criteria', [])
         draft.setdefault('disqualification_criteria', [])
-        draft.setdefault('call_pitch', '')
         draft.setdefault('profile', 'b2b')
+        draft.setdefault('framework', '')
 
-        VALID_TYPES = {'message', 'question', 'instruction'}
-        VALID_QUAL_CHANNELS = {'whatsapp', 'audio', None}
+        # Normalizadores — garantem o shape rico (bate com agents/schemas.py
+        # QualBlock/QualNote/QualQuestion/QualCard) pro editor e o render do playbook não quebrarem.
+        def _norm_question(q: dict) -> dict:
+            return {'text': q.get('text') or '', 'branch': q.get('branch') or '', 'note': q.get('note') or ''}
+
+        def _norm_card(c: dict) -> dict:
+            return {'title': c.get('title') or '', 'text': c.get('text') or ''}
+
+        def _norm_qblock(b: dict) -> dict:
+            kind = b.get('kind') or 'falar'
+            if kind not in ('falar', 'ouvir', 'perguntas', 'cards'):
+                kind = 'falar'
+            pts = b.get('points') or []
+            return {
+                'kind': kind,
+                'label': b.get('label') or '',
+                'open': b.get('open') or '',
+                'points': [str(p) for p in pts],
+                'close': b.get('close') or '',
+                'questions': [_norm_question(q) for q in (b.get('questions') or [])],
+                'cards': [_norm_card(c) for c in (b.get('cards') or [])],
+            }
+
+        def _norm_qnote(n: dict) -> dict:
+            kind = n.get('kind') or 'instrucao'
+            if kind not in ('instrucao', 'alerta', 'anote', 'stop', 'transicao'):
+                kind = 'instrucao'
+            return {'kind': kind, 'title': n.get('title') or '', 'text': n.get('text') or ''}
+
+        def _step(idx: int) -> dict:
+            steps = draft['steps']
+            if idx < 0 or idx >= len(steps):
+                raise ValueError(f"idx {idx} fora de range")
+            return steps[idx]
 
         def set_profile(profile: str) -> str:
             """Define o perfil de qualificação. profile = 'b2b' ou 'b2c'."""
@@ -428,69 +554,96 @@ class AssistantSession:
             self._log(f"Perfil definido como {profile.upper()}")
             return 'ok'
 
-        def set_whatsapp_flow(steps: list[dict]) -> str:
-            """Substitui o fluxo de WhatsApp inteiro.
-
-            CADA step tem 3 campos distintos — NÃO confunda:
-              - type (categoria do passo): "message" (texto pro lead), "question" (pergunta de qualificação), "instruction" (orientação interna pro SDR)
-              - content (texto do passo): string com mensagem/pergunta/instrução
-              - channel (formato de envio, opcional): "whatsapp" (texto, padrão) ou "audio" (gravação de voz)
-
-            Exemplo: {"type": "message", "content": "Oi!", "channel": "audio"}  -> mensagem em áudio
-            ERRADO: {"type": "audio", ...}  -> 'audio' é channel, não type!
-            """
-            normalized = []
-            for s in steps:
-                t = s.get('type')
-                ch = s.get('channel')
-                if t not in VALID_TYPES:
-                    raise ValueError(f"type inválido: {t}. Use um de {VALID_TYPES}")
-                if ch not in VALID_QUAL_CHANNELS:
-                    raise ValueError(f"channel inválido: {ch}")
-                normalized.append({'type': t, 'content': s.get('content', ''), 'channel': ch})
-            draft['whatsapp_flow'] = normalized
-            self._log(f"Fluxo WhatsApp definido com {len(normalized)} passos")
+        def set_framework(framework: str) -> str:
+            """Define o nome do framework exibido no cheat-sheet (ex 'GPCTBA')."""
+            draft['framework'] = framework or ''
+            self._log("Framework atualizado")
             return 'ok'
 
-        def add_whatsapp_step(
-            type: str,
-            content: str,
-            channel: Optional[str] = None,
-            position: Optional[int] = None,
+        def set_steps(steps: list[dict]) -> str:
+            """Substitui as etapas inteiras do playbook de qualificação.
+
+            Cada step: {num, title, phase, subtitle, gpctba, objective, blocks, notes}.
+            - blocks: lista de {kind: 'falar'|'ouvir'|'perguntas'|'cards', label, open, points: list[str],
+              close, questions: [{text, branch, note}], cards: [{title, text}]}.
+              'falar'/'ouvir' usam open/points/close; 'perguntas' usa questions; 'cards' usa cards.
+            - notes: lista de {kind: 'instrucao'|'alerta'|'anote'|'stop'|'transicao', title, text}.
+            Use 1 chamada pra montar o playbook todo de uma vez.
+            """
+            norm = []
+            for i, s in enumerate(steps):
+                norm.append({
+                    'num': str(s.get('num') or f'{i + 1:02d}'),
+                    'title': s.get('title') or '',
+                    'phase': s.get('phase') or '',
+                    'subtitle': s.get('subtitle') or '',
+                    'gpctba': s.get('gpctba') or '',
+                    'objective': s.get('objective') or '',
+                    'blocks': [_norm_qblock(b) for b in (s.get('blocks') or [])],
+                    'notes': [_norm_qnote(n) for n in (s.get('notes') or [])],
+                })
+            draft['steps'] = norm
+            self._log(f"{len(norm)} etapas de qualificação definidas")
+            return 'ok'
+
+        def add_step(
+            num: str,
+            title: str,
+            phase: str = '',
+            subtitle: str = '',
+            gpctba: str = '',
+            objective: str = '',
         ) -> str:
-            """Adiciona um passo ao fluxo de WhatsApp.
-              - type (categoria): "message" | "question" | "instruction"
-              - content: texto do passo
-              - channel (formato, opcional): "whatsapp" (padrão) | "audio" (mensagem de voz)
-              - position: índice (None = adiciona no final)
-            'audio' é VALOR de channel, NÃO de type.
-            """
-            if type not in VALID_TYPES:
-                raise ValueError(f"type inválido: {type}")
-            if channel not in VALID_QUAL_CHANNELS:
-                raise ValueError(f"channel inválido: {channel}")
-            step = {'type': type, 'content': content, 'channel': channel}
-            flow = draft['whatsapp_flow']
-            if position is None:
-                flow.append(step)
-            else:
-                flow.insert(position, step)
-            self._log(f"Passo {type} adicionado ao fluxo WhatsApp")
+            """Adiciona uma etapa (sem blocos/notas) ao final. Use set_step_blocks/set_step_notes depois."""
+            draft['steps'].append({
+                'num': str(num or f"{len(draft['steps']) + 1:02d}"),
+                'title': title or '', 'phase': phase or '', 'subtitle': subtitle or '',
+                'gpctba': gpctba or '', 'objective': objective or '',
+                'blocks': [], 'notes': [],
+            })
+            self._log(f"Etapa '{title}' adicionada")
             return 'ok'
 
-        def remove_whatsapp_step(idx: int) -> str:
-            """Remove passo do fluxo WhatsApp pelo índice."""
-            flow = draft['whatsapp_flow']
-            if idx < 0 or idx >= len(flow):
-                raise ValueError(f"idx {idx} fora de range")
-            flow.pop(idx)
-            self._log("Passo WhatsApp removido")
+        def update_step(
+            idx: int,
+            num: Optional[str] = None,
+            title: Optional[str] = None,
+            phase: Optional[str] = None,
+            subtitle: Optional[str] = None,
+            gpctba: Optional[str] = None,
+            objective: Optional[str] = None,
+        ) -> str:
+            """Atualiza os campos de cabeçalho de uma etapa (não mexe em blocks/notes)."""
+            st = _step(idx)
+            for k, v in {
+                'num': num, 'title': title, 'phase': phase, 'subtitle': subtitle,
+                'gpctba': gpctba, 'objective': objective,
+            }.items():
+                if v is not None:
+                    st[k] = str(v) if k == 'num' else v
+            self._log(f"Etapa '{st.get('title')}' atualizada")
             return 'ok'
 
-        def set_call_pitch(text: str) -> str:
-            """Define o pitch de abertura de ligação."""
-            draft['call_pitch'] = text
-            self._log("Pitch de ligação atualizado")
+        def remove_step(idx: int) -> str:
+            """Remove uma etapa do playbook pelo índice."""
+            st = _step(idx)
+            draft['steps'].pop(idx)
+            self._log(f"Etapa '{st.get('title')}' removida")
+            return 'ok'
+
+        def set_step_blocks(step_idx: int, blocks: list[dict]) -> str:
+            """Substitui os blocos de uma etapa. blocks: {kind: 'falar'|'ouvir'|'perguntas'|'cards', label,
+            open, points: list[str], close, questions: [{text, branch, note}], cards: [{title, text}]}."""
+            st = _step(step_idx)
+            st['blocks'] = [_norm_qblock(b) for b in blocks]
+            self._log(f"{len(st['blocks'])} blocos definidos na etapa '{st.get('title')}'")
+            return 'ok'
+
+        def set_step_notes(step_idx: int, notes: list[dict]) -> str:
+            """Substitui os avisos de uma etapa. notes: {kind: 'instrucao'|'alerta'|'anote'|'stop'|'transicao', title, text}."""
+            st = _step(step_idx)
+            st['notes'] = [_norm_qnote(n) for n in notes]
+            self._log(f"{len(st['notes'])} avisos definidos na etapa '{st.get('title')}'")
             return 'ok'
 
         def set_advance_criteria(criteria: list[str]) -> str:
@@ -519,10 +672,13 @@ class AssistantSession:
 
         return [
             set_profile,
-            set_whatsapp_flow,
-            add_whatsapp_step,
-            remove_whatsapp_step,
-            set_call_pitch,
+            set_framework,
+            set_steps,
+            add_step,
+            update_step,
+            remove_step,
+            set_step_blocks,
+            set_step_notes,
             set_advance_criteria,
             add_advance_criterion,
             set_disqualification_criteria,

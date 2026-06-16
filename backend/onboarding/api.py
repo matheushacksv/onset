@@ -399,8 +399,8 @@ def create_blank_material(request, data: BlankMaterialIn):
         },
         qualification={
             'profile': None,
-            'whatsapp_flow': [],
-            'call_pitch': '',
+            'framework': '',
+            'steps': [],
             'advance_criteria': [],
             'disqualification_criteria': [],
         },
@@ -902,8 +902,8 @@ def create_manual_material(request, onboarding_id: int):
         },
         qualification={
             'profile': 'b2b',
-            'whatsapp_flow': [],
-            'call_pitch': '',
+            'framework': '',
+            'steps': [],
             'advance_criteria': [],
             'disqualification_criteria': [],
         },
@@ -1179,7 +1179,7 @@ def unlock_shared(request, token: str, data: ShareUnlockIn):
 
 
 @router.get(
-    '/share/{token}/token/{kind}',
+    '/share/{token}/pdf/{kind}',
     auth=None,
     response={200: None, 400: Error, 403: Error, 404: Error, 410: Error},
 )

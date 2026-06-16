@@ -2,61 +2,174 @@
   <div class="section-opener">
     <div class="index">02</div>
     <div class="eyebrow section-label-anchor">Fechamento</div>
-    <h2 class="title">Estratégia de Fechamento</h2>
+    <h2 class="title">Playbook de Fechamento</h2>
     <div class="rule"></div>
-    <p class="lede">Diagnóstico, apresentação de preço, matriz de objeções e script de fechamento.</p>
+    <p class="lede">Estrutura da reunião passo a passo, diagnóstico, apresentação de preço e matriz de objeções.</p>
   </div>
 
   <div class="section-content">
-    {% set diag = closing.diagnostic_questions if closing.diagnostic_questions is defined else closing.get('diagnostic_questions') or [] %}
-    {% if diag %}
-    <h3 class="sub-title">Perguntas de Diagnóstico</h3>
-    <ol class="diagnostic">
-      {% for q in diag %}<li>{{ q }}</li>{% endfor %}
-    </ol>
-    {% endif %}
+    {# closing é dict (JSONField). Coleta defensiva com .get. #}
+    {% set steps = closing.get('meeting_structure') or [] %}
+    {% set diag = closing.get('diagnostic_questions') or [] %}
+    {% set price = closing.get('price_presentation') %}
+    {% set matrix = closing.get('objection_matrix') or [] %}
+    {% set special = closing.get('special_condition') %}
 
-    {% set price = closing.price_presentation if closing.price_presentation is defined else closing.get('price_presentation') %}
-    {% if price %}
-    <h3 class="sub-title">Apresentação de Preço</h3>
-    <div class="body-block">{{ price }}</div>
-    {% endif %}
+    {# Fases distintas (ordem de aparição) + paleta cíclica warm-fixa #}
+    {% set phases = [] %}
+    {% for s in steps %}
+      {% set ph = (s.get('phase') or '')|trim %}
+      {% if ph and ph not in phases %}{% set _ = phases.append(ph) %}{% endif %}
+    {% endfor %}
+    {% set palette = ['#4d7c58', '#3a6a4a', '#0e528c', '#4020a0', '#7e4e08'] %}
+    {% set act_label = {'falar': 'FALAR', 'ouvir': 'OUVIR', 'fazer': 'FAZER'} %}
 
-    {% set matrix = closing.objection_matrix if closing.objection_matrix is defined else closing.get('objection_matrix') or [] %}
-    {% if matrix %}
-    <h3 class="sub-title">Matriz de Objeções</h3>
-    <table class="objection-table">
-      <thead>
-        <tr>
-          <th style="width:28%">Objeção</th>
-          <th style="width:28%">Medo real</th>
-          <th>Contra-argumento</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in matrix %}
-        <tr>
-          <td>{{ row.objection }}</td>
-          <td>{{ row.hidden_concern }}</td>
-          <td>{{ row.counter_script }}</td>
-        </tr>
+    {# ---- Cheat-sheet / timeline ---- #}
+    {% if steps %}
+    <div class="pb-cs">
+      <h3 class="pb-cs-title">Mapa da <em>reunião</em></h3>
+      <div class="pb-timeline">
+        {% for s in steps %}
+          {% set ph = (s.get('phase') or '')|trim %}
+          {% set col = palette[phases.index(ph) % palette|length] if ph else '#1c1917' %}
+          <div class="pb-tl-step" style="background: {{ col }}1a;">
+            <div class="pb-tl-n" style="color: {{ col }};">{{ s.get('num') or '%02d'|format(loop.index) }}</div>
+            <div class="pb-tl-lbl">{{ s.get('title') }}</div>
+          </div>
         {% endfor %}
-      </tbody>
-    </table>
+      </div>
+      {% if phases %}
+      <div class="pb-legend">
+        {% for p in phases %}
+        <span class="pb-legend-item"><span class="pb-dot" style="background: {{ palette[loop.index0 % palette|length] }};"></span>{{ p }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
     {% endif %}
 
-    {% set script = closing.closing_script if closing.closing_script is defined else closing.get('closing_script') %}
-    {% if script %}
-    <h3 class="sub-title">Script de Fechamento</h3>
-    <div class="body-block">{{ script }}</div>
+    {# ---- Steps ---- #}
+    {% set ns = namespace(prev='') %}
+    {% for s in steps %}
+      {% set ph = (s.get('phase') or '')|trim %}
+      {% set col = palette[phases.index(ph) % palette|length] if ph else '#4d7c58' %}
+      {% if ph and ph != ns.prev %}
+      <div class="pb-divider" style="background: {{ col }};">
+        <span class="pb-divider-tag">Fase</span>
+        <span class="pb-divider-tit">{{ ph }}</span>
+      </div>
+      {% endif %}
+      {% set ns.prev = ph %}
+
+      <div class="pb-step">
+        <div class="pb-head">
+          <div class="pb-head-num" style="color: {{ col }};">{{ s.get('num') or '%02d'|format(loop.index) }}</div>
+          <div class="pb-head-titles">
+            <h3>{{ s.get('title') }}</h3>
+            {% if s.get('subtitle') %}<div class="pb-head-sub">{{ s.get('subtitle') }}</div>{% endif %}
+          </div>
+        </div>
+
+        {% for b in s.get('blocks') or [] %}
+          {% set kind = b.get('kind') or 'falar' %}
+          <div class="pb-block">
+            <div class="pb-act {{ kind }}">{{ act_label.get(kind, kind) }}</div>
+            <div class="pb-body {{ kind }}">
+              {% if b.get('label') %}<div class="pb-b-label">{{ b.get('label') }}</div>{% endif %}
+              {% if b.get('open') %}<p class="pb-open">{{ b.get('open') }}</p>{% endif %}
+              {% if b.get('points') %}
+              <ul class="pb-points">
+                {% for pt in b.get('points') %}<li>{{ pt }}</li>{% endfor %}
+              </ul>
+              {% endif %}
+              {% if b.get('close') %}<p class="pb-close-q">{{ b.get('close') }}</p>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+
+        {% for n in s.get('notes') or [] %}
+          {% set nk = n.get('kind') or 'alerta' %}
+          {% if nk == 'pausa' %}
+          <div class="pb-pause">
+            <div class="pb-pause-ico">&#9208;</div>
+            <div>
+              <div class="pb-pause-title">{{ n.get('title') or 'Pausa' }}</div>
+              <div class="pb-pause-sub">{{ n.get('text') }}</div>
+            </div>
+          </div>
+          {% elif nk == 'pergunta_chave' %}
+          <div class="pb-keyq">
+            <div class="pb-keyq-title">{{ n.get('title') or 'Pergunta-chave' }}</div>
+            <div class="pb-keyq-text">{{ n.get('text') }}</div>
+          </div>
+          {% elif nk == 'validacao' %}
+          <div class="pb-valida">
+            <div class="pb-valida-ico">&#10003;</div>
+            <div>
+              <div class="pb-valida-lbl">{{ n.get('title') or 'Validação' }}</div>
+              <div class="pb-valida-t">{{ n.get('text') }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="pb-alert">
+            <div class="pb-alert-title">{{ n.get('title') or 'Atenção' }}</div>
+            <div class="pb-alert-txt">{{ n.get('text') }}</div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    {# ---- Diagnóstico ---- #}
+    {% if diag %}
+    <div class="pb-qgroup">
+      <div class="pb-qgroup-h"><span class="pb-qg-n">?</span> Perguntas de diagnóstico</div>
+      <ul class="pb-qlist">
+        {% for q in diag %}<li>{{ q }}</li>{% endfor %}
+      </ul>
+    </div>
     {% endif %}
 
-    {% set special = closing.special_condition if closing.special_condition is defined else closing.get('special_condition') %}
+    {# ---- Apresentação de preço ---- #}
+    {% if price %}
+    <div class="pb-priceblock">
+      <div class="pb-block-h">Apresentação de preço</div>
+      <p class="pb-block-body">{{ price }}</p>
+    </div>
+    {% endif %}
+
+    {# ---- Condição especial ---- #}
     {% if special %}
-    <h3 class="sub-title">Condição Especial</h3>
-    <div class="card card--avanco">
-      <div class="clbl clbl--blue"><span class="dot"></span>Oferta exclusiva</div>
-      <div class="ctxt">{{ special }}</div>
+    <div class="pb-special">
+      <div class="pb-special-lbl">Condição especial</div>
+      <p class="pb-special-txt">{{ special }}</p>
+    </div>
+    {% endif %}
+
+    {# ---- Matriz de objeções ---- #}
+    {% if matrix %}
+    <div class="pb-objwrap">
+      <h3 class="pb-cs-title">Matriz de <em>objeções</em></h3>
+      <table class="pb-obj-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Objeção</th>
+            <th>O que esconde</th>
+            <th>Contra-script</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in matrix %}
+          <tr>
+            <td class="pb-obj-num">{{ '%02d'|format(loop.index) }}</td>
+            <td class="pb-obj-name">{{ row.get('objection') }}</td>
+            <td class="pb-obj-what">{{ row.get('hidden_concern') }}</td>
+            <td class="pb-obj-script">{{ row.get('counter_script') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
     {% endif %}
   </div>

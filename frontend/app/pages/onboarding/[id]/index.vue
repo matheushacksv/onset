@@ -303,11 +303,11 @@
         <ObStepHeader tag="Etapa 4 de 8" title="Fechamento" desc="Estrutura da reunião de fechamento. Desmarque etapas que não se aplicam e reordene conforme o fluxo do cliente." />
 
         <ObCard title="Estrutura da reunião de fechamento">
-          <p class="text-xs text-neutral-500 mb-3">Etapas padrão já marcadas. Desmarque o que não se aplica e use ↑/↓ para reordenar.</p>
+          <p class="text-xs text-neutral-500 mb-3">Etapas padrão já marcadas. Edite o texto, adicione ou remova etapas, desmarque o que não se aplica e use ↑/↓ para reordenar.</p>
           <div class="space-y-2">
             <div
               v-for="(etapa, i) in form.etapas_fechamento"
-              :key="etapa.num"
+              :key="i"
               class="w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left"
               :class="etapa.active
                 ? 'border-white/10 bg-white/[0.03]'
@@ -321,27 +321,41 @@
                 <span v-if="etapa.active">✓</span>
               </button>
               <span class="text-xs text-white/40 font-mono shrink-0">{{ etapa.num }}</span>
-              <button
-                class="flex-1 text-left text-sm min-w-0 truncate"
-                :class="etapa.active ? 'text-white/80' : 'text-white/30'"
-                @click="etapa.active = !etapa.active"
-              >{{ etapa.text }}</button>
+              <input
+                v-model="etapa.text"
+                class="flex-1 bg-transparent border-none text-sm min-w-0 focus:outline-none"
+                :class="etapa.active ? 'text-white/80 focus:text-white' : 'text-white/30'"
+                :disabled="!etapa.active"
+                placeholder="Nome da etapa..."
+              />
               <div class="flex items-center gap-0.5 shrink-0">
                 <button
                   class="w-6 h-6 flex items-center justify-center rounded text-sm leading-none text-white/30 hover:text-white/70 hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/30 transition-all"
                   :disabled="i === 0"
                   title="Mover para cima"
-                  @click="moveInList(form.etapas_fechamento, i, -1)"
+                  @click="moveEtapaFechamento(i, -1)"
                 >↑</button>
                 <button
                   class="w-6 h-6 flex items-center justify-center rounded text-sm leading-none text-white/30 hover:text-white/70 hover:bg-white/5 disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-white/30 transition-all"
                   :disabled="i === form.etapas_fechamento.length - 1"
                   title="Mover para baixo"
-                  @click="moveInList(form.etapas_fechamento, i, 1)"
+                  @click="moveEtapaFechamento(i, 1)"
                 >↓</button>
+                <button
+                  class="w-6 h-6 flex items-center justify-center rounded text-base leading-none text-white/30 hover:text-red-400 hover:bg-white/5 transition-all"
+                  title="Remover etapa"
+                  @click="removeEtapaFechamento(i)"
+                >×</button>
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            class="w-full mt-2 py-2 border border-dashed border-white/10 rounded-xl text-xs text-white/30 font-semibold tracking-widest uppercase hover:border-white/20 hover:text-white/50 transition-all"
+            @click="addEtapaFechamento"
+          >
+            + Adicionar etapa
+          </button>
         </ObCard>
 
         <div class="mb-4">
@@ -772,6 +786,7 @@ const {
   form, step, saving, submitting, loading, status, dealId, dealName,
   load, nextStep, prevStep, submit,
   toggleChip, toggleFunil, selectPlano, addEtapa, addBonus, moveInList,
+  addEtapaFechamento, removeEtapaFechamento, moveEtapaFechamento,
   PLANOS,
   materials, materialsGenerating, loadMaterials, generateMaterials,
   createManualMaterial, copyMaterialFrom, loadMaterialLibrary,

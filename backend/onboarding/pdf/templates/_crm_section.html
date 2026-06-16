@@ -21,55 +21,61 @@
       </h3>
     </div>
 
+    {# paleta ciclica por etapa (espelha o board colorido do Pipedrive) #}
+    {% set palette = ['#4d7c58', '#a8641a', '#0e528c', '#b83030', '#6d4ad6', '#0e8a78', '#a06010', '#5638b4'] %}
+
     <div class="kanban-board">
       {% for stage in funnel.stages %}
+      {% set scol = palette[loop.index0 % palette|length] %}
       <div class="kanban-col">
-        <div class="col-hdr">
+        <div class="col-hdr" style="background: {{ scol }};">
           <span class="col-num">{{ loop.index }}</span>
           <span class="col-name">{{ stage.name }}</span>
         </div>
 
-        <div class="card card--objetivo">
-          <div class="clbl clbl--verde"><span class="dot"></span>Objetivo</div>
-          <div class="ctxt">{{ stage.objective }}</div>
-        </div>
-
-        <div class="card card--avanco">
-          <div class="clbl clbl--blue"><span class="dot"></span>Critério de avanço</div>
-          <div class="ctxt">{{ stage.advance_criteria }}</div>
-        </div>
-
-        {% if stage.loss_reason %}
-        <div class="card card--perda">
-          <div class="clbl clbl--red"><span class="dot"></span>Motivo de perda</div>
-          <div class="ctxt">{{ stage.loss_reason }}</div>
-        </div>
-        {% endif %}
-
-        {% if stage.dev_instructions and not public %}
-        <div class="card card--dev">
-          <div class="clbl clbl--amber"><span class="dot"></span>Instrução à equipe</div>
-          <div class="ctxt">{{ stage.dev_instructions }}</div>
-        </div>
-        {% endif %}
-
-        {% if stage.cadence %}
-        <div class="cad-head">Cadência de contato</div>
-        {% for day in stage.cadence %}
-        {% for action in day.actions %}
-        <div class="card card--msg">
-          <div class="drow">
-            <span class="dbadge dbadge-{{ action.channel|channel_slug }}">{{ action.channel }}</span>
-            <span class="dnum">Dia {{ day.day }}</span>
+        <div class="stage-body" style="border-left-color: {{ scol }};">
+          <div class="card card--objetivo" style="border-left-color: {{ scol }};">
+            <div class="clbl clbl--verde"><span class="dot"></span>Objetivo</div>
+            <div class="ctxt">{{ stage.objective }}</div>
           </div>
-          <div class="sbox">{{ action.message }}</div>
-          {% if action.instructions %}
-          <div class="ibox">{{ action.instructions }}</div>
+
+          <div class="card card--avanco" style="border-left-color: {{ scol }};">
+            <div class="clbl clbl--blue"><span class="dot"></span>Critério de avanço</div>
+            <div class="ctxt">{{ stage.advance_criteria }}</div>
+          </div>
+
+          {% if stage.loss_reason %}
+          <div class="card card--perda" style="border-left-color: {{ scol }};">
+            <div class="clbl clbl--red"><span class="dot"></span>Motivo de perda</div>
+            <div class="ctxt">{{ stage.loss_reason }}</div>
+          </div>
+          {% endif %}
+
+          {% if stage.dev_instructions and not public %}
+          <div class="card card--dev" style="border-left-color: {{ scol }};">
+            <div class="clbl clbl--amber"><span class="dot"></span>Instrução à equipe</div>
+            <div class="ctxt">{{ stage.dev_instructions }}</div>
+          </div>
+          {% endif %}
+
+          {% if stage.cadence %}
+          <div class="cad-head" style="color: {{ scol }};">Cadência de contato</div>
+          {% for day in stage.cadence %}
+          {% for action in day.actions %}
+          <div class="card card--msg" style="border-left-color: {{ scol }};">
+            <div class="drow">
+              <span class="dbadge dbadge-{{ action.channel|channel_slug }}">{{ action.channel }}</span>
+              <span class="dnum">Dia {{ day.day }}</span>
+            </div>
+            <div class="sbox">{{ action.message }}</div>
+            {% if action.instructions %}
+            <div class="ibox">{{ action.instructions }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% endfor %}
           {% endif %}
         </div>
-        {% endfor %}
-        {% endfor %}
-        {% endif %}
       </div>
       {% endfor %}
     </div>
