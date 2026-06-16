@@ -5,9 +5,21 @@ export interface PipelineStage { name: string; objective: string; dev_instructio
 export interface CRMFunnel { key: string; name: string; stages: PipelineStage[] }
 export interface CRMScript { funnels: CRMFunnel[] }
 export interface ObjectionRow { objection: string; hidden_concern: string; counter_script: string }
-export interface ClosingMaterial { diagnostic_questions: string[]; price_presentation: string; objection_matrix: ObjectionRow[]; closing_script: string; special_condition?: string }
-export interface QualStep { type: string; content: string; channel?: string }
-export interface QualificationScript { profile: string; whatsapp_flow: QualStep[]; call_pitch: string; advance_criteria: string[]; disqualification_criteria: string[] }
+export type MeetingBlockKind = 'falar' | 'ouvir' | 'fazer'
+export interface MeetingBlock { kind: MeetingBlockKind; label: string; open: string; points: string[]; close: string }
+export type MeetingNoteKind = 'alerta' | 'pausa' | 'pergunta_chave' | 'validacao'
+export interface MeetingNote { kind: MeetingNoteKind; title: string; text: string }
+export interface MeetingStep { num: string; title: string; phase: string; subtitle: string; blocks: MeetingBlock[]; notes: MeetingNote[] }
+export interface ClosingMaterial { diagnostic_questions: string[]; price_presentation: string; objection_matrix: ObjectionRow[]; meeting_structure?: MeetingStep[]; closing_script: string; special_condition?: string }
+export interface QualStep { type: string; content: string; channel?: string } // legado
+export interface QualQuestion { text: string; branch: string; note: string }
+export interface QualCard { title: string; text: string }
+export type QualBlockKind = 'falar' | 'ouvir' | 'perguntas' | 'cards'
+export interface QualBlock { kind: QualBlockKind; label: string; open: string; points: string[]; close: string; questions: QualQuestion[]; cards: QualCard[] }
+export type QualNoteKind = 'instrucao' | 'alerta' | 'anote' | 'stop' | 'transicao'
+export interface QualNote { kind: QualNoteKind; title: string; text: string }
+export interface QualPlaybookStep { num: string; title: string; phase: string; subtitle: string; gpctba: string; objective: string; blocks: QualBlock[]; notes: QualNote[] }
+export interface QualificationScript { profile: string; framework: string; steps?: QualPlaybookStep[]; advance_criteria: string[]; disqualification_criteria: string[]; whatsapp_flow?: QualStep[]; call_pitch?: string }
 export interface MaterialOut {
   id: number
   status: 'idle' | 'pending' | 'running' | 'complete' | 'failed'
@@ -525,6 +537,24 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     ;[list[i], list[j]] = [list[j], list[i]]
   }
 
+  // Etapas da reunião de fechamento: num é o rótulo de ordem (01, 02...). Re-sequencia
+  // após add/remover/mover para manter consistência (a IA usa num como ordem).
+  const renumberEtapasFechamento = () => {
+    form.value.etapas_fechamento.forEach((e, i) => { e.num = String(i + 1).padStart(2, '0') })
+  }
+  const addEtapaFechamento = () => {
+    form.value.etapas_fechamento.push({ num: '', text: '', active: true })
+    renumberEtapasFechamento()
+  }
+  const removeEtapaFechamento = (i: number) => {
+    form.value.etapas_fechamento.splice(i, 1)
+    renumberEtapasFechamento()
+  }
+  const moveEtapaFechamento = (i: number, dir: -1 | 1) => {
+    moveInList(form.value.etapas_fechamento, i, dir)
+    renumberEtapasFechamento()
+  }
+
   const suggestingScripts = ref(false)
 
   const suggestScripts = async () => {
@@ -543,6 +573,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     form, step, saving, submitting, loading, status, dealId, dealName, assessorName,
     load, saveStep, nextStep, prevStep, submit,
     toggleChip, selectOne, toggleFunil, selectPlano, addEtapa, addBonus, moveInList,
+    addEtapaFechamento, removeEtapaFechamento, moveEtapaFechamento,
     PLANOS, suggestingScripts,
     materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
     createManualMaterial, copyMaterialFrom, loadMaterialLibrary,

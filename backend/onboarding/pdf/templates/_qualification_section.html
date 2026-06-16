@@ -2,47 +2,189 @@
   <div class="section-opener">
     <div class="index">03</div>
     <div class="eyebrow section-label-anchor">Qualificação</div>
-    <h2 class="title">Roteiro de Qualificação</h2>
+    <h2 class="title">Playbook de Qualificação</h2>
     <div class="rule"></div>
     <p class="lede">
-      Fluxo WhatsApp, pitch de ligação e critérios de avanço.
-      {% set profile = qualification.profile if qualification.profile is defined else qualification.get('profile') %}
-      {% if profile %}Perfil: <strong>{{ profile|upper }}</strong>.{% endif %}
+      Etapas da abordagem do SDR passo a passo, perguntas-chave e critérios de avanço.
+      {% set profile = qualification.get('profile') %}
+      {% if profile %} Perfil: <strong>{{ profile|upper }}</strong>.{% endif %}
     </p>
   </div>
 
   <div class="section-content">
-    {% set flow = qualification.whatsapp_flow if qualification.whatsapp_flow is defined else qualification.get('whatsapp_flow') or [] %}
-    {% if flow %}
-    <h3 class="sub-title">Fluxo WhatsApp</h3>
-    <div class="qual-flow">
-      {% for step in flow %}
-      {% set tmap = {'message': 'verde', 'question': 'amber', 'instruction': 'blue'} %}
-      {% set tlabel = {'message': 'Mensagem', 'question': 'Pergunta', 'instruction': 'Instrução'} %}
-      <div class="qual-step">
-        <div class="qual-rail">
-          <span class="qual-dot">{{ '%02d' % loop.index }}</span>
-        </div>
-        <div class="qual-body">
-          <div class="card card--plain">
-            <div class="clbl clbl--{{ tmap.get(step.type, 'muted') }}"><span class="dot"></span>{{ tlabel.get(step.type, step.type) }}</div>
-            <div class="ctxt">{{ step.content }}</div>
+    {# qualification é dict (JSONField). Coleta defensiva com .get. #}
+    {% set steps = qualification.get('steps') or [] %}
+    {% set framework = qualification.get('framework') %}
+    {% set advance = qualification.get('advance_criteria') or [] %}
+    {% set disq = qualification.get('disqualification_criteria') or [] %}
+
+    {# Fases distintas (ordem de aparição) + paleta cíclica warm-fixa #}
+    {% set phases = [] %}
+    {% for s in steps %}
+      {% set ph = (s.get('phase') or '')|trim %}
+      {% if ph and ph not in phases %}{% set _ = phases.append(ph) %}{% endif %}
+    {% endfor %}
+    {% set palette = ['#4d7c58', '#3a6a4a', '#0e528c', '#4020a0', '#7e4e08'] %}
+    {% set act_label = {'falar': 'FALAR', 'ouvir': 'OUVIR'} %}
+
+    {# Perguntas essenciais p/ cheat-sheet: as que têm marcador (note) #}
+    {% set ess = namespace(items=[]) %}
+    {% for s in steps %}
+      {% set snum = s.get('num') or '%02d'|format(loop.index) %}
+      {% for b in s.get('blocks') or [] %}
+        {% if (b.get('kind') or 'falar') == 'perguntas' %}
+          {% for q in b.get('questions') or [] %}
+            {% if (q.get('note') or '')|trim and (q.get('text') or '')|trim %}
+              {% set _ = ess.items.append({'num': snum, 'text': q.get('text'), 'note': q.get('note')}) %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+
+    {# ---- Cheat-sheet / timeline ---- #}
+    {% if steps %}
+    <div class="pb-cs">
+      <h3 class="pb-cs-title">Mapa da <em>qualificação</em>{% if framework %} <span class="pbq-framework">{{ framework }}</span>{% endif %}</h3>
+      <div class="pb-timeline">
+        {% for s in steps %}
+          {% set ph = (s.get('phase') or '')|trim %}
+          {% set col = palette[phases.index(ph) % palette|length] if ph else '#1c1917' %}
+          <div class="pb-tl-step" style="background: {{ col }}1a;">
+            <div class="pb-tl-n" style="color: {{ col }};">{{ s.get('num') or '%02d'|format(loop.index) }}</div>
+            <div class="pb-tl-lbl">{{ s.get('title') }}</div>
+          </div>
+        {% endfor %}
+      </div>
+      {% if phases %}
+      <div class="pb-legend">
+        {% for p in phases %}
+        <span class="pb-legend-item"><span class="pb-dot" style="background: {{ palette[loop.index0 % palette|length] }};"></span>{{ p }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if ess.items %}
+      <div class="pbq-essentials">
+        <div class="pbq-ess-h"><span class="pb-qg-n">?</span> Perguntas essenciais</div>
+        {% for q in ess.items %}
+        <div class="pbq-ess-row">
+          <span class="pbq-ess-n">{{ q.num }}</span>
+          <div>
+            <p class="pbq-ess-q">{{ q.text }}</p>
+            <p class="pbq-ess-note">{{ q.note }}</p>
           </div>
         </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+      {% endif %}
     </div>
     {% endif %}
 
-    {% set pitch = qualification.call_pitch if qualification.call_pitch is defined else qualification.get('call_pitch') %}
-    {% if pitch %}
-    <h3 class="sub-title">Pitch de Ligação</h3>
-    <div class="body-block">{{ pitch }}</div>
-    {% endif %}
+    {# ---- Steps ---- #}
+    {% set ns = namespace(prev='') %}
+    {% for s in steps %}
+      {% set ph = (s.get('phase') or '')|trim %}
+      {% set col = palette[phases.index(ph) % palette|length] if ph else '#4d7c58' %}
+      {% if ph and ph != ns.prev %}
+      <div class="pb-divider" style="background: {{ col }};">
+        <span class="pb-divider-tag">Fase</span>
+        <span class="pb-divider-tit">{{ ph }}</span>
+      </div>
+      {% endif %}
+      {% set ns.prev = ph %}
 
-    {% set advance = qualification.advance_criteria if qualification.advance_criteria is defined else qualification.get('advance_criteria') or [] %}
-    {% set disq = qualification.disqualification_criteria if qualification.disqualification_criteria is defined else qualification.get('disqualification_criteria') or [] %}
+      <div class="pb-step">
+        <div class="pb-head">
+          <div class="pb-head-num" style="color: {{ col }};">{{ s.get('num') or '%02d'|format(loop.index) }}</div>
+          <div class="pb-head-titles">
+            <h3>{{ s.get('title') }}{% if s.get('gpctba') %} <span class="pbq-gpctba" style="background: {{ col }};">{{ s.get('gpctba') }}</span>{% endif %}</h3>
+            {% if s.get('subtitle') %}<div class="pb-head-sub">{{ s.get('subtitle') }}</div>{% endif %}
+          </div>
+        </div>
 
+        {% if s.get('objective') %}
+        <div class="pbq-objective" style="border-left-color: {{ col }};">
+          <span class="pbq-obj-lbl" style="color: {{ col }};">Objetivo</span>
+          <p>{{ s.get('objective') }}</p>
+        </div>
+        {% endif %}
+
+        {% for b in s.get('blocks') or [] %}
+          {% set kind = b.get('kind') or 'falar' %}
+          {% if kind == 'perguntas' %}
+          <div class="pbq-qblock">
+            {% if b.get('label') %}<div class="pb-b-label">{{ b.get('label') }}</div>{% endif %}
+            {% for q in b.get('questions') or [] %}
+            <div class="pbq-q">
+              <span class="pbq-q-badge">P</span>
+              <div class="pbq-q-body">
+                <p class="pbq-q-text">{{ q.get('text') }}</p>
+                {% if q.get('branch') %}<p class="pbq-q-branch">{{ q.get('branch') }}</p>{% endif %}
+                {% if q.get('note') %}<span class="pbq-q-note">{{ q.get('note') }}</span>{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% elif kind == 'cards' %}
+          <div class="pbq-cards-wrap">
+            {% if b.get('label') %}<div class="pb-b-label">{{ b.get('label') }}</div>{% endif %}
+            <div class="pbq-cards">
+              {% for c in b.get('cards') or [] %}
+              <div class="pbq-card">
+                {% if c.get('title') %}<div class="pbq-card-t">{{ c.get('title') }}</div>{% endif %}
+                <p class="pbq-card-x">{{ c.get('text') }}</p>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% else %}
+          <div class="pb-block">
+            <div class="pb-act {{ kind }}">{{ act_label.get(kind, kind) }}</div>
+            <div class="pb-body {{ kind }}">
+              {% if b.get('label') %}<div class="pb-b-label">{{ b.get('label') }}</div>{% endif %}
+              {% if b.get('open') %}<p class="pb-open">{{ b.get('open') }}</p>{% endif %}
+              {% if b.get('points') %}
+              <ul class="pb-points">{% for pt in b.get('points') %}<li>{{ pt }}</li>{% endfor %}</ul>
+              {% endif %}
+              {% if b.get('close') %}<p class="pb-close-q">{{ b.get('close') }}</p>{% endif %}
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+
+        {% for n in s.get('notes') or [] %}
+          {% set nk = n.get('kind') or 'instrucao' %}
+          {% if nk == 'transicao' %}
+          <div class="pbq-transicao"><span class="pbq-trans-arrow">&#8594;</span> {{ n.get('text') or n.get('title') }}</div>
+          {% elif nk == 'stop' %}
+          <div class="pbq-stop">
+            <div class="pbq-stop-ico">&#11044;</div>
+            <div>
+              <div class="pbq-stop-lbl">{{ n.get('title') or 'Checkpoint' }}</div>
+              <div class="pbq-stop-t">{{ n.get('text') }}</div>
+            </div>
+          </div>
+          {% elif nk == 'anote' %}
+          <div class="pbq-anote">
+            <div class="pbq-anote-lbl">{{ n.get('title') or 'Anote' }}</div>
+            <div class="pbq-anote-t">{{ n.get('text') }}</div>
+          </div>
+          {% elif nk == 'alerta' %}
+          <div class="pb-alert">
+            <div class="pb-alert-title">{{ n.get('title') or 'Alerta' }}</div>
+            <div class="pb-alert-txt">{{ n.get('text') }}</div>
+          </div>
+          {% else %}
+          <div class="pbq-instr">
+            <div class="pbq-instr-lbl">{{ n.get('title') or 'Instrução' }}</div>
+            <div class="pbq-instr-t">{{ n.get('text') }}</div>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    {# ---- Critérios ---- #}
     {% if advance or disq %}
     <h3 class="sub-title">Critérios</h3>
     <div class="criteria-grid">

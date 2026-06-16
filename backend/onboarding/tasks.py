@@ -127,6 +127,22 @@ def prewarm_assistant_task(material_id: int):
 _MSG_LABEL_RE = re.compile(r'^\s*(?:script final|script sugerido|script|mensagem)\s*:\s*', re.IGNORECASE)
 
 
+# Postgres jsonb/text NÃO armazena U+0000 (NUL) — o modelo às vezes injeta NUL no meio
+# de uma string e o save() estoura `unsupported Unicode escape sequence`. Tira NUL + demais
+# control chars C0 (exceto \t \n \r) de toda string, recursivamente.
+_CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f]')
+
+
+def _strip_ctrl(value):
+    if isinstance(value, str):
+        return _CTRL_RE.sub('', value)
+    if isinstance(value, list):
+        return [_strip_ctrl(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _strip_ctrl(v) for k, v in value.items()}
+    return value
+
+
 def _sanitize_crm(crm: dict) -> dict:
     """Normaliza o CRM gerado pela IA antes de salvar.
 
@@ -158,10 +174,10 @@ def generate_materials_task(onboarding_id: int):
     try:
         workflow = MaterialWorkflow()
         result = asyncio.run(workflow.arun(onboarding_to_dict(onboarding)))
-        material.crm = _sanitize_crm(result.crm.model_dump())
-        material.closing = result.closing.model_dump()
-        material.qualification = result.qualification.model_dump()
-        material.quality_alerts = result.quality_alerts
+        material.crm = _strip_ctrl(_sanitize_crm(result.crm.model_dump()))
+        material.closing = _strip_ctrl(result.closing.model_dump())
+        material.qualification = _strip_ctrl(result.qualification.model_dump())
+        material.quality_alerts = _strip_ctrl(result.quality_alerts)
         material.status = 'complete'
     except Exception as e:
         material.status = 'failed'

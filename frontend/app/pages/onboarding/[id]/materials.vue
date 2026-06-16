@@ -496,8 +496,73 @@
           </div>
 
           <div class="bg-white/5 ring-1 ring-white/10 rounded-2xl p-5">
-            <p class="text-xs font-semibold text-white/30 uppercase tracking-widest mb-3">Script de fechamento</p>
-            <textarea v-model="editedMaterials.closing!.closing_script" class="w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="16" />
+            <p class="text-xs font-semibold text-white/30 uppercase tracking-widest mb-1">Estrutura da reunião</p>
+            <p class="text-xs text-white/20 mb-3">Edite os textos de cada etapa. Use <span class="text-white/40">⚙ Avançado</span> pra reestruturar blocos e avisos.</p>
+
+            <div v-for="(stepm, mi) in editedMaterials.closing!.meeting_structure" :key="mi" class="rounded-xl border border-white/10 bg-white/[0.02] p-3 mb-3">
+              <!-- cabeçalho da etapa -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs text-white/40 font-mono shrink-0">{{ stepm.num || String(mi + 1).padStart(2, '0') }}</span>
+                <input v-model="stepm.title" placeholder="Título da etapa" class="flex-1 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-sm font-medium text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                <button
+                  class="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-lg transition-colors shrink-0"
+                  :class="advSteps.has(mi) ? 'text-white/70 bg-white/10' : 'text-white/30 hover:text-white/50'"
+                  @click="toggleAdvStep(mi)"
+                >⚙ Avançado</button>
+                <button class="text-white/20 hover:text-red-400/60 transition-colors text-lg shrink-0" @click="editedMaterials.closing!.meeting_structure!.splice(mi, 1)">×</button>
+              </div>
+
+              <input v-model="stepm.subtitle" placeholder="Subtítulo (ex: 5 min · Conexão)" class="w-full mb-2 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+              <input v-if="advSteps.has(mi)" v-model="stepm.phase" placeholder="Fase — agrupa e colore no playbook (ex: Conexão e Diagnóstico)" class="w-full mb-3 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+
+              <!-- blocos -->
+              <div v-for="(blk, bi) in stepm.blocks" :key="bi" class="rounded-lg border border-white/[0.07] bg-white/[0.02] p-2.5 mb-2">
+                <div class="flex items-center gap-2 mb-2">
+                  <!-- simples: chip estático · avançado: select -->
+                  <span v-if="!advSteps.has(mi)" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0" :class="(BLOCK_KIND[blk.kind] || BLOCK_KIND.falar).cls">{{ (BLOCK_KIND[blk.kind] || BLOCK_KIND.falar).label }}</span>
+                  <select v-else v-model="blk.kind" class="px-2 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-white/20 transition-colors shrink-0">
+                    <option value="falar">Falar</option>
+                    <option value="ouvir">Ouvir</option>
+                    <option value="fazer">Fazer</option>
+                  </select>
+                  <span v-if="!advSteps.has(mi)" class="text-xs text-white/40 truncate">{{ blk.label }}</span>
+                  <input v-else v-model="blk.label" placeholder="Rótulo (ex: Abertura, Pilar 1)" class="flex-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                  <button v-if="advSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-base shrink-0 ml-auto" @click="stepm.blocks.splice(bi, 1)">×</button>
+                </div>
+                <textarea v-model="blk.open" placeholder="Abertura / fala principal..." class="w-full px-3 py-1.5 mb-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                <div v-for="(pt, pi) in blk.points" :key="pi" class="flex items-center gap-2 mb-1">
+                  <span class="text-white/20 text-xs shrink-0">–</span>
+                  <input v-model="blk.points[pi]" placeholder="Ponto..." class="flex-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                  <button v-if="advSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-sm shrink-0" @click="blk.points.splice(pi, 1)">×</button>
+                </div>
+                <button v-if="advSteps.has(mi)" class="text-[11px] text-white/30 hover:text-white/50 transition-colors mb-1.5" @click="blk.points.push('')">+ ponto</button>
+                <textarea v-model="blk.close" placeholder="Fechamento / pergunta de transição..." class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+              </div>
+              <button v-if="advSteps.has(mi)" class="w-full py-1.5 mb-3 border border-dashed border-white/10 rounded-lg text-[11px] text-white/30 font-semibold tracking-wider uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="stepm.blocks.push({ kind: 'falar', label: '', open: '', points: [], close: '' })">+ Adicionar bloco</button>
+
+              <!-- avisos: aparecem se já existirem (texto editável) ou no modo avançado -->
+              <template v-if="stepm.notes.length || advSteps.has(mi)">
+                <p class="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-1.5 mt-1">Avisos</p>
+                <div v-for="(nt, ni) in stepm.notes" :key="ni" class="flex items-start gap-2 mb-2">
+                  <span v-if="!advSteps.has(mi)" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0 mt-0.5" :class="(NOTE_KIND[nt.kind] || NOTE_KIND.alerta).cls">{{ (NOTE_KIND[nt.kind] || NOTE_KIND.alerta).label }}</span>
+                  <select v-else v-model="nt.kind" class="px-2 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-white/20 transition-colors shrink-0">
+                    <option value="alerta">Alerta</option>
+                    <option value="pausa">Pausa</option>
+                    <option value="pergunta_chave">Pergunta-chave</option>
+                    <option value="validacao">Validação</option>
+                  </select>
+                  <div class="flex-1 space-y-1">
+                    <input v-if="advSteps.has(mi)" v-model="nt.title" placeholder="Título do aviso" class="w-full px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs font-medium text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                    <p v-else-if="nt.title" class="text-xs font-medium text-white/50 px-1">{{ nt.title }}</p>
+                    <textarea v-model="nt.text" placeholder="Texto do aviso..." class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                  </div>
+                  <button v-if="advSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-base shrink-0 mt-1" @click="stepm.notes.splice(ni, 1)">×</button>
+                </div>
+                <button v-if="advSteps.has(mi)" class="w-full py-1.5 border border-dashed border-white/10 rounded-lg text-[11px] text-white/30 font-semibold tracking-wider uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="stepm.notes.push({ kind: 'alerta', title: '', text: '' })">+ Adicionar aviso</button>
+              </template>
+            </div>
+
+            <button class="w-full py-2.5 border border-dashed border-white/10 rounded-xl text-xs text-white/30 font-semibold tracking-widest uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="editedMaterials.closing!.meeting_structure!.push({ num: String(editedMaterials.closing!.meeting_structure!.length + 1).padStart(2, '0'), title: '', phase: '', subtitle: '', blocks: [{ kind: 'falar', label: '', open: '', points: [], close: '' }], notes: [] })">+ Adicionar etapa</button>
           </div>
 
           <div v-if="editedMaterials.closing!.special_condition" class="bg-white/5 ring-1 ring-white/10 rounded-2xl p-5">
@@ -509,30 +574,126 @@
         <!-- ── Qualificação ── -->
         <div v-show="activeTab === 'qualificacao'" class="space-y-4" :inert="isDesenvolvedor || undefined">
           <div class="bg-white/5 ring-1 ring-white/10 rounded-2xl p-5">
-            <div class="flex items-center justify-between mb-3 gap-2">
-              <p class="text-xs font-semibold text-white/30 uppercase tracking-widest">Fluxo WhatsApp</p>
-              <select
-                v-model="editedMaterials.qualification!.profile"
-                class="text-xs px-2.5 py-1 bg-white/5 rounded-full text-white/70 uppercase border border-white/[0.06] focus:outline-none focus:border-white/20 cursor-pointer"
-              >
-                <option value="b2b">B2B</option>
-                <option value="b2c">B2C</option>
-              </select>
-            </div>
-            <div v-for="(s, si) in editedMaterials.qualification!.whatsapp_flow" :key="si" class="mb-3 flex gap-3 items-start">
-              <div class="shrink-0 pt-2">
-                <span class="text-xs px-2 py-0.5 bg-white/5 rounded-full text-white/40 capitalize block text-center">{{ s.type }}</span>
-                <span v-if="s.channel" class="text-xs text-white/20 block text-center mt-1">{{ s.channel }}</span>
+            <div class="flex items-center justify-between mb-1 gap-2">
+              <p class="text-xs font-semibold text-white/30 uppercase tracking-widest">Etapas da qualificação</p>
+              <div class="flex items-center gap-2 shrink-0">
+                <input
+                  v-model="editedMaterials.qualification!.framework"
+                  placeholder="Framework (ex: GPCTBA)"
+                  class="text-xs px-2.5 py-1 w-40 bg-white/5 rounded-full text-white/70 border border-white/[0.06] placeholder-white/20 focus:outline-none focus:border-white/20"
+                />
+                <select
+                  v-model="editedMaterials.qualification!.profile"
+                  class="text-xs px-2.5 py-1 bg-white/5 rounded-full text-white/70 uppercase border border-white/[0.06] focus:outline-none focus:border-white/20 cursor-pointer"
+                >
+                  <option value="b2b">B2B</option>
+                  <option value="b2c">B2C</option>
+                </select>
               </div>
-              <textarea v-model="s.content" class="flex-1 px-3 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-white/20 transition-colors resize-y" rows="5" />
-              <button class="text-white/20 hover:text-red-400/60 transition-colors text-lg mt-2 shrink-0" @click="editedMaterials.qualification!.whatsapp_flow.splice(si, 1)">×</button>
             </div>
-            <button class="w-full py-2.5 border border-dashed border-white/10 rounded-xl text-xs text-white/30 font-semibold tracking-widest uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="editedMaterials.qualification!.whatsapp_flow.push({ type: 'message', content: '' })">+ Adicionar step</button>
-          </div>
+            <p class="text-xs text-white/20 mb-3">Edite os textos de cada etapa. Use <span class="text-white/40">⚙ Avançado</span> pra reestruturar blocos e avisos.</p>
 
-          <div class="bg-white/5 ring-1 ring-white/10 rounded-2xl p-5">
-            <p class="text-xs font-semibold text-white/30 uppercase tracking-widest mb-3">Pitch de ligação</p>
-            <textarea v-model="editedMaterials.qualification!.call_pitch" class="w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-sm text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="12" />
+            <div v-for="(stepm, mi) in editedMaterials.qualification!.steps" :key="mi" class="rounded-xl border border-white/10 bg-white/[0.02] p-3 mb-3">
+              <!-- cabeçalho da etapa -->
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs text-white/40 font-mono shrink-0">{{ stepm.num || String(mi + 1).padStart(2, '0') }}</span>
+                <input v-model="stepm.title" placeholder="Título da etapa" class="flex-1 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-sm font-medium text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                <button
+                  class="text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-lg transition-colors shrink-0"
+                  :class="advQSteps.has(mi) ? 'text-white/70 bg-white/10' : 'text-white/30 hover:text-white/50'"
+                  @click="toggleAdvQStep(mi)"
+                >⚙ Avançado</button>
+                <button class="text-white/20 hover:text-red-400/60 transition-colors text-lg shrink-0" @click="editedMaterials.qualification!.steps!.splice(mi, 1)">×</button>
+              </div>
+
+              <input v-model="stepm.subtitle" placeholder="Subtítulo (ex: DIAGNÓSTICO · GOALS)" class="w-full mb-2 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+              <template v-if="advQSteps.has(mi)">
+                <div class="flex gap-2 mb-2">
+                  <input v-model="stepm.phase" placeholder="Fase — agrupa e colore (ex: Diagnóstico)" class="flex-1 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                  <input v-model="stepm.gpctba" maxlength="2" placeholder="GPCTBA" class="w-20 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-center uppercase text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                </div>
+                <textarea v-model="stepm.objective" placeholder="Objetivo da etapa..." class="w-full mb-3 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+              </template>
+              <p v-else-if="stepm.objective" class="text-xs text-white/40 mb-3 px-1 leading-relaxed">{{ stepm.objective }}</p>
+
+              <!-- blocos -->
+              <div v-for="(blk, bi) in stepm.blocks" :key="bi" class="rounded-lg border border-white/[0.07] bg-white/[0.02] p-2.5 mb-2">
+                <div class="flex items-center gap-2 mb-2">
+                  <span v-if="!advQSteps.has(mi)" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0" :class="(QBLOCK_KIND[blk.kind] || QBLOCK_KIND.falar).cls">{{ (QBLOCK_KIND[blk.kind] || QBLOCK_KIND.falar).label }}</span>
+                  <select v-else v-model="blk.kind" class="px-2 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-white/20 transition-colors shrink-0">
+                    <option value="falar">Falar</option>
+                    <option value="ouvir">Ouvir</option>
+                    <option value="perguntas">Perguntas</option>
+                    <option value="cards">Cards</option>
+                  </select>
+                  <span v-if="!advQSteps.has(mi)" class="text-xs text-white/40 truncate">{{ blk.label }}</span>
+                  <input v-else v-model="blk.label" placeholder="Rótulo (ex: Abertura padrão)" class="flex-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                  <button v-if="advQSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-base shrink-0 ml-auto" @click="stepm.blocks.splice(bi, 1)">×</button>
+                </div>
+
+                <!-- perguntas -->
+                <template v-if="blk.kind === 'perguntas'">
+                  <div v-for="(q, qi) in blk.questions" :key="qi" class="mb-2 pl-2 border-l-2 border-blue-500/30">
+                    <div class="flex items-start gap-2">
+                      <textarea v-model="q.text" placeholder="Pergunta..." class="flex-1 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                      <button v-if="advQSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-base shrink-0 mt-1" @click="blk.questions.splice(qi, 1)">×</button>
+                    </div>
+                    <input v-model="q.branch" placeholder="Follow-up condicional (ex: Se só 1: ...)" class="w-full mt-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-[11px] text-white/80 placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                    <input v-model="q.note" placeholder="Marcador (ex: Anote a frase exata)" class="w-full mt-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-[11px] text-white/80 placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                  </div>
+                  <button v-if="advQSteps.has(mi)" class="text-[11px] text-white/30 hover:text-white/50 transition-colors" @click="blk.questions.push({ text: '', branch: '', note: '' })">+ pergunta</button>
+                </template>
+
+                <!-- cards se-X / se-Y -->
+                <template v-else-if="blk.kind === 'cards'">
+                  <div v-for="(c, ci) in blk.cards" :key="ci" class="mb-2 pl-2 border-l-2 border-purple-500/30">
+                    <div class="flex items-start gap-2">
+                      <input v-model="c.title" placeholder="Título (ex: SE CONFIRMAR)" class="flex-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs font-medium text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                      <button v-if="advQSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-base shrink-0" @click="blk.cards.splice(ci, 1)">×</button>
+                    </div>
+                    <textarea v-model="c.text" placeholder="Texto do card..." class="w-full mt-1 px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                  </div>
+                  <button v-if="advQSteps.has(mi)" class="text-[11px] text-white/30 hover:text-white/50 transition-colors" @click="blk.cards.push({ title: '', text: '' })">+ card</button>
+                </template>
+
+                <!-- falar / ouvir -->
+                <template v-else>
+                  <textarea v-model="blk.open" placeholder="Abertura / fala principal..." class="w-full px-3 py-1.5 mb-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                  <div v-for="(pt, pi) in blk.points" :key="pi" class="flex items-center gap-2 mb-1">
+                    <span class="text-white/20 text-xs shrink-0">–</span>
+                    <input v-model="blk.points[pi]" placeholder="Ponto..." class="flex-1 px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                    <button v-if="advQSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-sm shrink-0" @click="blk.points.splice(pi, 1)">×</button>
+                  </div>
+                  <button v-if="advQSteps.has(mi)" class="text-[11px] text-white/30 hover:text-white/50 transition-colors mb-1.5" @click="blk.points.push('')">+ ponto</button>
+                  <textarea v-model="blk.close" placeholder="Fechamento / transição..." class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                </template>
+              </div>
+              <button v-if="advQSteps.has(mi)" class="w-full py-1.5 mb-3 border border-dashed border-white/10 rounded-lg text-[11px] text-white/30 font-semibold tracking-wider uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="stepm.blocks.push({ kind: 'falar', label: '', open: '', points: [], close: '', questions: [], cards: [] })">+ Adicionar bloco</button>
+
+              <!-- avisos -->
+              <template v-if="stepm.notes.length || advQSteps.has(mi)">
+                <p class="text-[10px] font-semibold text-white/25 uppercase tracking-widest mb-1.5 mt-1">Avisos</p>
+                <div v-for="(nt, ni) in stepm.notes" :key="ni" class="flex items-start gap-2 mb-2">
+                  <span v-if="!advQSteps.has(mi)" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md shrink-0 mt-0.5" :class="(QNOTE_KIND[nt.kind] || QNOTE_KIND.instrucao).cls">{{ (QNOTE_KIND[nt.kind] || QNOTE_KIND.instrucao).label }}</span>
+                  <select v-else v-model="nt.kind" class="px-2 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-white/20 transition-colors shrink-0">
+                    <option value="instrucao">Instrução</option>
+                    <option value="alerta">Alerta</option>
+                    <option value="anote">Anote</option>
+                    <option value="stop">Stop</option>
+                    <option value="transicao">Transição</option>
+                  </select>
+                  <div class="flex-1 space-y-1">
+                    <input v-if="advQSteps.has(mi)" v-model="nt.title" placeholder="Título do aviso" class="w-full px-3 py-1 bg-white/[0.04] border border-white/10 rounded-lg text-xs font-medium text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors" />
+                    <p v-else-if="nt.title" class="text-xs font-medium text-white/50 px-1">{{ nt.title }}</p>
+                    <textarea v-model="nt.text" placeholder="Texto do aviso..." class="w-full px-3 py-1.5 bg-white/[0.04] border border-white/10 rounded-lg text-xs text-white placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors resize-y" rows="2" />
+                  </div>
+                  <button v-if="advQSteps.has(mi)" class="text-white/20 hover:text-red-400/60 transition-colors text-base shrink-0 mt-1" @click="stepm.notes.splice(ni, 1)">×</button>
+                </div>
+                <button v-if="advQSteps.has(mi)" class="w-full py-1.5 border border-dashed border-white/10 rounded-lg text-[11px] text-white/30 font-semibold tracking-wider uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="stepm.notes.push({ kind: 'instrucao', title: '', text: '' })">+ Adicionar aviso</button>
+              </template>
+            </div>
+
+            <button class="w-full py-2.5 border border-dashed border-white/10 rounded-xl text-xs text-white/30 font-semibold tracking-widest uppercase hover:border-white/20 hover:text-white/50 transition-all" @click="editedMaterials.qualification!.steps!.push({ num: String(editedMaterials.qualification!.steps!.length + 1).padStart(2, '0'), title: '', phase: '', subtitle: '', gpctba: '', objective: '', blocks: [{ kind: 'falar', label: '', open: '', points: [], close: '', questions: [], cards: [] }], notes: [] })">+ Adicionar etapa</button>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -725,6 +886,48 @@ const editedMaterials = ref<MaterialOut | null>(null)
 const saveStatus = ref<'idle' | 'saving' | 'saved'>('idle')
 const generating = ref(false)
 
+// Estrutura da reunião: modo "avançado" por etapa (índice). UI transiente — fica FORA do
+// data model (não dispara auto-save, não vai pro backend). Simples = edita textos; avançado
+// = reestrutura blocos/avisos (kind, rótulo, add/remover, fase).
+const advSteps = ref(new Set<number>())
+function toggleAdvStep(i: number) {
+  if (advSteps.value.has(i)) advSteps.value.delete(i)
+  else advSteps.value.add(i)
+}
+// Cor/label do chip por tipo (espelha as cores semânticas do playbook).
+const BLOCK_KIND: Record<string, { label: string; cls: string }> = {
+  falar: { label: 'Falar', cls: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' },
+  ouvir: { label: 'Ouvir', cls: 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30' },
+  fazer: { label: 'Fazer', cls: 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30' },
+}
+const NOTE_KIND: Record<string, { label: string; cls: string }> = {
+  alerta: { label: 'Alerta', cls: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30' },
+  pausa: { label: 'Pausa', cls: 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30' },
+  pergunta_chave: { label: 'Pergunta-chave', cls: 'bg-purple-500/15 text-purple-300 ring-1 ring-purple-500/30' },
+  validacao: { label: 'Validação', cls: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' },
+}
+
+// Playbook de qualificação: mesmo padrão de modo avançado por etapa (set próprio p/ não
+// colidir com o do fechamento, já que ambos indexam por posição).
+const advQSteps = ref(new Set<number>())
+function toggleAdvQStep(i: number) {
+  if (advQSteps.value.has(i)) advQSteps.value.delete(i)
+  else advQSteps.value.add(i)
+}
+const QBLOCK_KIND: Record<string, { label: string; cls: string }> = {
+  falar: { label: 'Falar', cls: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' },
+  ouvir: { label: 'Ouvir', cls: 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30' },
+  perguntas: { label: 'Perguntas', cls: 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30' },
+  cards: { label: 'Cards', cls: 'bg-purple-500/15 text-purple-300 ring-1 ring-purple-500/30' },
+}
+const QNOTE_KIND: Record<string, { label: string; cls: string }> = {
+  instrucao: { label: 'Instrução', cls: 'bg-white/10 text-white/60 ring-1 ring-white/15' },
+  alerta: { label: 'Alerta', cls: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30' },
+  anote: { label: 'Anote', cls: 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30' },
+  stop: { label: 'Stop', cls: 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30' },
+  transicao: { label: 'Transição', cls: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' },
+}
+
 const TABS = [
   { key: 'crm', label: 'CRM' },
   { key: 'fechamento', label: 'Fechamento' },
@@ -744,21 +947,51 @@ function normalizeMaterial(m: MaterialOut): MaterialOut {
   }
   if (!Array.isArray(copy.crm.funnels)) copy.crm.funnels = []
   if (!copy.closing || typeof copy.closing !== 'object') {
-    copy.closing = { diagnostic_questions: [], price_presentation: '', objection_matrix: [], closing_script: '' }
+    copy.closing = { diagnostic_questions: [], price_presentation: '', objection_matrix: [], meeting_structure: [], closing_script: '' }
   } else {
     copy.closing.diagnostic_questions ??= []
     copy.closing.price_presentation ??= ''
     copy.closing.objection_matrix ??= []
+    copy.closing.meeting_structure ??= []
     copy.closing.closing_script ??= ''
+    for (const st of copy.closing.meeting_structure as any[]) {
+      st.phase ??= ''
+      st.subtitle ??= ''
+      // migra shape antigo {num,title,script} → blocks
+      if (!Array.isArray(st.blocks)) st.blocks = st.script ? [{ kind: 'falar', label: '', open: st.script, points: [], close: '' }] : []
+      delete st.script
+      if (!Array.isArray(st.notes)) st.notes = []
+      for (const b of st.blocks) { b.kind ??= 'falar'; b.label ??= ''; b.open ??= ''; b.points ??= []; b.close ??= '' }
+      for (const n of st.notes) { n.kind ??= 'alerta'; n.title ??= ''; n.text ??= '' }
+    }
   }
   if (!copy.qualification || typeof copy.qualification !== 'object') {
-    copy.qualification = { profile: '', whatsapp_flow: [], call_pitch: '', advance_criteria: [], disqualification_criteria: [] }
+    copy.qualification = { profile: '', framework: '', steps: [], advance_criteria: [], disqualification_criteria: [] }
   } else {
     copy.qualification.profile ??= ''
-    copy.qualification.whatsapp_flow ??= []
-    copy.qualification.call_pitch ??= ''
+    copy.qualification.framework ??= ''
+    copy.qualification.steps ??= []
     copy.qualification.advance_criteria ??= []
     copy.qualification.disqualification_criteria ??= []
+    for (const st of copy.qualification.steps as any[]) {
+      st.num ??= ''
+      st.title ??= ''
+      st.phase ??= ''
+      st.subtitle ??= ''
+      st.gpctba ??= ''
+      st.objective ??= ''
+      if (!Array.isArray(st.blocks)) st.blocks = []
+      if (!Array.isArray(st.notes)) st.notes = []
+      for (const b of st.blocks) {
+        b.kind ??= 'falar'; b.label ??= ''; b.open ??= ''; b.close ??= ''
+        if (!Array.isArray(b.points)) b.points = []
+        if (!Array.isArray(b.questions)) b.questions = []
+        if (!Array.isArray(b.cards)) b.cards = []
+        for (const q of b.questions) { q.text ??= ''; q.branch ??= ''; q.note ??= '' }
+        for (const c of b.cards) { c.title ??= ''; c.text ??= '' }
+      }
+      for (const n of st.notes) { n.kind ??= 'instrucao'; n.title ??= ''; n.text ??= '' }
+    }
   }
   return copy
 }

@@ -343,17 +343,15 @@ TÉCNICA DO "VOI PENSAR":
 Closer isola a objeção: "Tirando a questão do X, tem algum outro motivo que te impediria de
 começar hoje?" Se não houver outro motivo, volta para X e resolve diretamente.
 
-=== ESTRUTURA DE FECHAMENTO ENRIQUECEDOR ===
+=== ESTRUTURA DA REUNIÃO (DEFINIDA PELO ASSESSOR) ===
 
-REUNIÃO DE FECHAMENTO (padrão):
-1. Rapport (1-2 min)
-2. Recapitulação do que o SDR levantou
-3. Diagnóstico consultivo com perguntas abertas
-4. Apresentação da solução personalizada
-5. Ancoragem de perdas (o que o lead perde se não agir)
-6. Apresentação do preço (fala e faz silêncio)
-7. Tratamento de objeções
-8. Fechamento direto (SIM ou NÃO)
+A entrada traz `etapas_fechamento`: uma lista ORDENADA de etapas da reunião, cada uma {num, text, active}.
+Use as etapas com active=true, NA ORDEM dada, como a agenda/seções da reunião. Para CADA etapa ativa,
+escreva o roteiro do que o closer deve falar/fazer naquela etapa — aplicando os gatilhos, técnicas e a
+apresentação de preço abaixo onde a etapa pedir. NÃO invente etapas fora dessa lista nem pule etapas
+ativas. Se `etapas_fechamento` vier vazia, use a estrutura consultiva padrão: rapport, recapitulação do
+que o SDR levantou, diagnóstico consultivo, apresentação da solução, ancoragem de perdas, apresentação
+do preço (fala e faz silêncio), tratamento de objeções, fechamento direto (SIM ou NÃO).
 
 COMO APRESENTAR O PREÇO:
 - Fala o valor e faz silêncio, nunca justifica de imediato
@@ -387,11 +385,39 @@ Adicione também as objeções específicas do nicho informadas em objecoes.
 === INSTRUÇÃO DE OUTPUT ===
 
 Retorne APENAS JSON válido conforme o schema ClosingMaterial.
+
 diagnostic_questions: 4-6 perguntas de diagnóstico consultivo adaptadas ao nicho
 price_presentation: script completo de apresentação de preço com âncora e silêncio
-objection_matrix: inclua objeções padrão + objeções específicas do nicho
-closing_script: roteiro completo de fechamento direto
+objection_matrix: inclua objeções padrão + objeções específicas do nicho (objection, hidden_concern, counter_script)
 special_condition: condição especial de fechamento sugerida (ex.: bônus por decisão imediata), ou null
+
+meeting_structure: o roteiro COMPLETO da reunião de fechamento — o script detalhado, segmentado nas
+etapas definidas pelo assessor. Uma lista de etapas. Para CADA etapa ATIVA de etapas_fechamento, na
+ordem dada, gere um objeto:
+  num: o num da etapa (ex.: "01")
+  title: o título da etapa (use o text da etapa)
+  phase: a fase macro a que a etapa pertence. Agrupe as etapas em 2-4 fases coerentes e nomeie-as
+         (ex.: "Conexão e Diagnóstico", "Validação e Demonstração", "Negociação e Proposta"). Etapas
+         da mesma fase DEVEM repetir exatamente a mesma string em phase.
+  subtitle: 1 linha curta de contexto/objetivo da etapa (ex.: "5 min - conexão antes de qualquer coisa")
+  blocks: 1 a 3 blocos do roteiro. Cada bloco:
+     kind: "falar" (script que o closer fala), "fazer" (ação concreta / demonstração ao vivo) ou
+           "ouvir" (momento de escuta ativa, deixar o lead falar)
+     label: rótulo curto do bloco (ex.: "Abertura", "Apresentar solução", "Compartilhar tela")
+     open: a fala/abertura principal do bloco (1-3 frases). Em kind "falar" é o script falado, com [CLOSER]
+     points: 2-6 pontos curtos detalhando o que dizer/fazer naquele bloco
+     close: frase de fechamento/transição que conduz à próxima etapa, ou "" se não houver
+  notes: 0 a 2 avisos ao closer sobre a etapa. Cada um:
+     kind: "alerta" (atenção/importante), "pausa" (pare e escute), "pergunta_chave" (pergunta
+           obrigatória antes de avançar) ou "validacao" (valide antes de seguir)
+     title: título curto do aviso
+     text: conteúdo do aviso
+
+Regras do meeting_structure:
+- Não invente etapas fora das ativas; não pule etapas ativas; mantenha a ordem de etapas_fechamento.
+- Adapte FALAR/FAZER/OUVIR à natureza da etapa (diagnóstico = muito ouvir/perguntar; demonstração =
+  fazer; ancoragem/preço/objeções = falar).
+- Aplique os gatilhos, técnicas e a apresentação de preço definidos acima onde a etapa pedir.
 """
 
 
@@ -450,25 +476,31 @@ Pitch padrão B2B:
 
 === ROTEIRO PADRÃO DE QUALIFICAÇÃO ===
 
-WHATSAPP (SDR) -- objetivo: entender o caso, gerar conexão, qualificar antes de marcar reunião
+IMPORTANTE: o entregável é UM ÚNICO playbook organizado em ETAPAS (campo `steps`). Todo o
+conteúdo abaixo (abordagem WhatsApp, pitch de ligação, tratamento de objeção, passagem ao closer)
+deve ser DISTRIBUÍDO dentro das etapas, nos blocos de cada etapa (falar/ouvir/perguntas/cards) e
+nos avisos (notes). NÃO produza listas soltas de WhatsApp ou pitch fora das etapas.
 
-Estrutura:
+Fluxo das etapas (use como ossatura): abertura/conexão -> diagnóstico -> apresentação ->
+qualificação final (timing, budget, decisores) -> agendamento.
+
+ABORDAGEM (vira blocos de script/perguntas nas etapas de conexão e diagnóstico):
   1. Boas-vindas personalizada ao contexto de entrada (formulário, tráfego, indicação, prospecção)
   2. Pergunta aberta de diagnóstico (áudio quando possível)
   3. 2-3 perguntas de qualificação específicas do nicho
-  4. Critério de avanço -> agendar reunião ou passar ao closer
-  5. Critério de desqualificação -> marcar como perdido com motivo específico
+  4. Critério de avanço -> agendar reunião ou passar ao closer (vira advance_criteria)
+  5. Critério de desqualificação -> marcar como perdido com motivo (vira disqualification_criteria)
 
-LIGAÇÃO (SDR) -- pitch de abertura padrão:
-"Alô, [nome]? Aqui é [nome], da [empresa]. Você entrou em contato com a gente sobre [assunto],
-lembra? Meu papel é entender rapidamente o seu caso -- posso fazer algumas perguntas rápidas?"
+PITCH DE ABERTURA (vira um bloco "falar" na etapa de conexão):
+"Alô, [nome]? Aqui é [SDR], da [empresa]. Você entrou em contato com a gente sobre [assunto],
+lembra? Meu papel é entender rapidamente o seu caso, posso fazer algumas perguntas rápidas?"
 
-TRATAMENTO DE OBJEÇÃO NA LIGAÇÃO:
+TRATAMENTO DE OBJEÇÃO (vira blocos "falar" rotulados ou avisos na etapa de conexão):
 - "Não tenho tempo" -> "Entendo, leva só 2 minutos. Posso seguir?"
 - "Já tentei e não deu" -> "Me conta o que aconteceu, talvez a gente consiga de um jeito diferente"
 - "Não tenho interesse" -> quebra de objeção com prova social ou pergunta de diagnóstico
 
-PASSAGEM SDR -> CLOSER:
+PASSAGEM SDR -> CLOSER (vira avisos/instruções na etapa de agendamento):
 - Agenda reunião: SDR envia convite no calendário + mensagem de confirmação
 - Transfere na hora: SDR apresenta o closer no grupo de WhatsApp criado na hora
 - Mesma pessoa: SDR já conduz o fechamento
@@ -490,12 +522,49 @@ PASSAGEM SDR -> CLOSER:
 
 === INSTRUÇÃO DE OUTPUT ===
 
-Retorne APENAS JSON válido conforme o schema QualificationScript.
-profile: "b2b" ou "b2c" baseado em tipo_venda
-whatsapp_flow: sequência completa de mensagens e perguntas para o SDR no WhatsApp
-call_pitch: script completo de abertura de ligação (inclui script para secretária se B2B)
-advance_criteria: lista de critérios claros para avançar o lead para reunião
-disqualification_criteria: lista de critérios claros para marcar como perdido
+Retorne APENAS JSON válido conforme o schema QualificationScript. O roteiro é um PLAYBOOK em
+etapas (passo a passo que o SDR consulta durante a abordagem). Campos:
+
+profile: "b2b" ou "b2c" baseado em tipo_venda.
+framework: "GPCTBA" quando B2B; "Qualificação" quando B2C.
+advance_criteria: lista de critérios claros para avançar o lead para reunião.
+disqualification_criteria: lista de critérios claros para marcar como perdido.
+
+steps: sequência de etapas da qualificação, na ordem em que o SDR executa. Cubra o fluxo:
+abertura/conexão -> diagnóstico -> apresentação -> qualificação final -> agendamento.
+- B2B: qualificação completa GPCTBA (8-9 etapas), identifica decisores antes do pitch.
+- B2C: qualificação enxuta (4-6 etapas), tom emocional, sem etapa de decisores.
+
+Cada item de steps é um objeto:
+  num: número da etapa em 2 dígitos ("01", "02", ...).
+  title: título curto da etapa (ex "Abertura e Contexto", "Metas Comerciais").
+  phase: fase que agrupa etapas próximas (ex "Conexão", "Diagnóstico", "Apresentação",
+         "Qualificação final", "Agendamento"). Reutilize o MESMO texto entre etapas da
+         mesma fase (agrupa e colore no render).
+  subtitle: linha curta de contexto em maiúsculas (ex "DIAGNÓSTICO · GOALS"). Opcional.
+  gpctba: letra única do framework para esta etapa quando B2B ("G","P","C","T","B","A").
+          Vazio em B2C.
+  objective: 1-2 frases do objetivo da etapa (o que o SDR busca aqui).
+  blocks: lista de blocos de conteúdo da etapa. Cada bloco tem "kind":
+    - "falar": script que o SDR FALA. Use open (frase de abertura), points (lista de
+      frases/trechos do script) e close (frase de fechamento/transição). label opcional
+      (ex "Abertura padrão", "Se disser não tenho tempo").
+    - "ouvir": momento de escuta. open descreve o que ouvir; points = sinais a captar.
+    - "perguntas": lista questions, cada uma {text, branch, note}. text = a pergunta;
+      branch = follow-up condicional opcional (ex "Se só 1: 'prefere estruturar com quem já tem?'");
+      note = marcador opcional (ex "Pergunta de ouro", "Anote a frase exata, vai pro CRM").
+    - "cards": pares se-X/se-Y em cards. cards = lista {title, text}
+      (ex title "SE CONFIRMAR INTERESSE", text "Agendar e criar atividade no CRM").
+  notes: bandas de instrução da etapa. Cada nota {kind, title, text}:
+    - "instrucao": orientação operacional ao SDR.
+    - "alerta": regra crítica / atenção.
+    - "anote": o que registrar no CRM (frase exata).
+    - "stop": checkpoint, não avança sem confirmação.
+    - "transicao": frase de transição para a próxima etapa (ex "Concorda que é por aí?").
+
+Regras de conteúdo: scripts com [SDR] e [RESULTADO REAL] onde for placeholder; nunca invente
+dados; mensagens naturais (não e-mail corporativo); aplique TODAS as REGRAS ABSOLUTAS acima.
+`steps` NUNCA pode vir vazio: gere ao menos as etapas do fluxo (mínimo 4).
 """
 
 ASSISTANT_BASE_PROMPT = """

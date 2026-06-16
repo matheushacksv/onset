@@ -42,23 +42,72 @@ class ObjectionRow(Schema):
     hidden_concern: str
     counter_script: str
 
+class MeetingBlock(Schema):
+    kind: Literal['falar', 'ouvir', 'fazer'] = 'falar'
+    label: str = ''
+    open: str = ''
+    points: list[str] = []
+    close: str = ''
+
+class MeetingNote(Schema):
+    kind: Literal['alerta', 'pausa', 'pergunta_chave', 'validacao'] = 'alerta'
+    title: str = ''
+    text: str = ''
+
+class MeetingStep(Schema):
+    num: str
+    title: str
+    phase: str = ''
+    subtitle: str = ''
+    blocks: list[MeetingBlock] = []
+    notes: list[MeetingNote] = []
+
 class ClosingMaterial(Schema):
     diagnostic_questions: list[str] = []
     price_presentation: str = ''
     objection_matrix: list[ObjectionRow] = []
+    meeting_structure: list[MeetingStep] = []
     closing_script: str = ''
     special_condition: Optional[str] = None
 
-#* Qualificação
-class QualStep(Schema):
-    type: Literal['message','question','instruction']
-    content: str
-    channel: Optional[Literal['whatsapp', 'audio']] = None
+#* Qualificação — Playbook rico (espelha ClosingMaterial.meeting_structure)
+class QualQuestion(Schema):
+    text: str = ''            # pergunta (badge P)
+    branch: str = ''          # follow-up condicional ("se só 1: ...")
+    note: str = ''            # marca ANOTE / "pergunta de ouro"
+
+class QualCard(Schema):       # cards se-X / se-Y (2 colunas)
+    title: str = ''           # ex "SE CONFIRMAR INTERESSE"
+    text: str = ''
+
+class QualBlock(Schema):
+    kind: Literal['falar', 'ouvir', 'perguntas', 'cards'] = 'falar'
+    label: str = ''
+    open: str = ''            # falar/ouvir
+    points: list[str] = []    # falar/ouvir
+    close: str = ''           # falar/ouvir
+    questions: list[QualQuestion] = []   # perguntas
+    cards: list[QualCard] = []           # cards
+
+class QualNote(Schema):
+    kind: Literal['instrucao', 'alerta', 'anote', 'stop', 'transicao'] = 'instrucao'
+    title: str = ''
+    text: str = ''
+
+class QualPlaybookStep(Schema):
+    num: str = ''
+    title: str = ''
+    phase: str = ''           # ex "Conexão", "Diagnóstico" (agrupa + colore)
+    subtitle: str = ''        # ex "DIAGNÓSTICO · GOALS"
+    gpctba: str = ''          # letra G/P/C/T/B/A (chip canto, opcional)
+    objective: str = ''       # banda OBJETIVO (sempre exibida)
+    blocks: list[QualBlock] = []
+    notes: list[QualNote] = []
 
 class QualificationScript(Schema):
     profile: Optional[Literal['b2b','b2c']] = None
-    whatsapp_flow: list[QualStep] = []
-    call_pitch: str = ''
+    framework: str = ''                        # ex "GPCTBA" (label cheat-sheet)
+    steps: list[QualPlaybookStep] = []         # playbook rico
     advance_criteria: list[str] = []
     disqualification_criteria: list[str] = []
 

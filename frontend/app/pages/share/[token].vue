@@ -165,84 +165,13 @@
       </section>
 
       <!-- ── Fechamento ── -->
-      <section v-show="tab === 'fechamento'" class="max-w-3xl mx-auto px-6 py-8 space-y-5">
-        <div v-if="material.closing?.diagnostic_questions?.length">
-          <h2 class="share-h2">Perguntas de diagnóstico</h2>
-          <ol class="space-y-1.5">
-            <li
-              v-for="(q, qi) in material.closing.diagnostic_questions"
-              :key="qi"
-              class="flex gap-3 py-2 border-b border-[var(--border)] text-[14px]"
-            >
-              <span class="text-[color:var(--accent)] font-bold text-xs pt-0.5">{{ String(qi + 1).padStart(2, '0') }}</span>
-              <span class="text-[color:var(--dim)]">{{ q }}</span>
-            </li>
-          </ol>
-        </div>
-        <div v-if="material.closing?.price_presentation">
-          <h2 class="share-h2">Apresentação de preço</h2>
-          <div class="share-block">{{ material.closing.price_presentation }}</div>
-        </div>
-        <div v-if="material.closing?.objection_matrix?.length">
-          <h2 class="share-h2">Matriz de objeções</h2>
-          <div class="rounded-2xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
-            <div
-              v-for="(row, ri) in material.closing.objection_matrix"
-              :key="ri"
-              class="px-4 py-3 border-b border-[var(--border)] last:border-0"
-            >
-              <p class="text-sm font-semibold text-[color:var(--text)]">{{ row.objection }}</p>
-              <p class="text-xs text-[color:var(--muted)] mt-0.5 mb-1.5">Medo real: {{ row.hidden_concern }}</p>
-              <p class="text-[13px] text-[color:var(--dim)] leading-relaxed">{{ row.counter_script }}</p>
-            </div>
-          </div>
-        </div>
-        <div v-if="material.closing?.closing_script">
-          <h2 class="share-h2">Script de fechamento</h2>
-          <div class="share-block">{{ material.closing.closing_script }}</div>
-        </div>
-        <div v-if="material.closing?.special_condition">
-          <h2 class="share-h2">Condição especial</h2>
-          <div class="rounded-2xl bg-[var(--blue-bg)] border-l-[3px] border-[var(--accent2)] px-4 py-3 text-[14px] text-[color:var(--dim)] whitespace-pre-wrap">{{ material.closing.special_condition }}</div>
-        </div>
+      <section v-show="tab === 'fechamento'" class="py-8">
+        <ShareClosingPlaybook v-if="material.closing" :closing="material.closing" />
       </section>
 
       <!-- ── Qualificação ── -->
-      <section v-show="tab === 'qualificacao'" class="max-w-3xl mx-auto px-6 py-8 space-y-5">
-        <div v-if="material.qualification?.whatsapp_flow?.length">
-          <h2 class="share-h2">Fluxo WhatsApp</h2>
-          <div class="space-y-2.5">
-            <div
-              v-for="(step, si) in material.qualification.whatsapp_flow"
-              :key="si"
-              class="flex gap-3"
-            >
-              <span class="w-7 h-7 rounded-full bg-[var(--accent)] text-[color:var(--on-accent)] text-xs font-bold flex items-center justify-center shrink-0">{{ String(si + 1).padStart(2, '0') }}</span>
-              <div class="flex-1 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-                <span class="text-[10px] font-bold uppercase tracking-wider text-[color:var(--muted)]">{{ step.type }}</span>
-                <p class="text-[14px] text-[color:var(--dim)] leading-relaxed mt-1 whitespace-pre-wrap">{{ step.content }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="material.qualification?.call_pitch">
-          <h2 class="share-h2">Pitch de ligação</h2>
-          <div class="share-block">{{ material.qualification.call_pitch }}</div>
-        </div>
-        <div v-if="material.qualification?.advance_criteria?.length || material.qualification?.disqualification_criteria?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div v-if="material.qualification?.advance_criteria?.length" class="rounded-2xl border border-[var(--border)] border-l-[3px] border-l-[var(--accent)] bg-[var(--surface)] px-4 py-3">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-[color:var(--accent)] mb-2">Avanço</p>
-            <ul class="space-y-1.5">
-              <li v-for="(c, ci) in material.qualification.advance_criteria" :key="ci" class="text-[13px] text-[color:var(--dim)]">· {{ c }}</li>
-            </ul>
-          </div>
-          <div v-if="material.qualification?.disqualification_criteria?.length" class="rounded-2xl border border-[var(--border)] border-l-[3px] border-l-[var(--red)] bg-[var(--surface)] px-4 py-3">
-            <p class="text-[10px] font-bold uppercase tracking-wider text-[color:var(--red)] mb-2">Desqualificação</p>
-            <ul class="space-y-1.5">
-              <li v-for="(c, ci) in material.qualification.disqualification_criteria" :key="ci" class="text-[13px] text-[color:var(--dim)]">· {{ c }}</li>
-            </ul>
-          </div>
-        </div>
+      <section v-show="tab === 'qualificacao'" class="py-8">
+        <ShareQualificationPlaybook v-if="material.qualification" :qualification="material.qualification" />
       </section>
 
       <footer class="max-w-6xl mx-auto px-6 py-6 text-center text-xs text-[color:var(--muted)] border-t border-[var(--border)] mt-4">
