@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -118,7 +119,36 @@ FUNIL_LABELS = {
 }
 
 
-MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'))
+# temperature baixa: reduz a variância do sampling (e a chance do quirk de chars de
+# controle abaixo). gpt-5.4-nano aceita != 1.
+MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'), temperature=0.2)
+
+
+# gpt-5.4-nano às vezes emite chars de controle (ex.: \x7f no lugar de acento) — quirk de
+# sampling no output de texto, não-determinístico. Vira tofu no PDF. Detecta p/ re-rodar o
+# agent (uma geração nova costuma vir limpa). C0 (exceto \t\n\r), DEL e C1.
+_CTRL_RE = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]')
+
+
+def _has_ctrl(content) -> bool:
+    if content is None:
+        return False
+    try:
+        s = json.dumps(content.model_dump(), ensure_ascii=False, default=str)
+    except Exception:
+        s = str(content)
+    return bool(_CTRL_RE.search(s))
+
+
+async def _arun_clean(agent: Agent, payload: str, attempts: int = 3):
+    """Roda o agent; se o output tiver chars de controle, re-roda até `attempts` vezes.
+    Retorna a primeira resposta limpa (ou a última tentativa se nenhuma limpar)."""
+    resp = await agent.arun(payload)
+    for _ in range(attempts - 1):
+        if not _has_ctrl(resp.content):
+            return resp
+        resp = await agent.arun(payload)
+    return resp
 
 
 class MaterialWorkflow:
@@ -172,14 +202,18 @@ class MaterialWorkflow:
             funis = ['default']
 
         crm_tasks = [
-            self.crm_agent.arun(json.dumps(crm_context(onboarding_data, funil_key=k)))
+            _arun_clean(
+                self.crm_agent, json.dumps(crm_context(onboarding_data, funil_key=k))
+            )
             for k in funis
         ]
 
         crm_results, closing, qual = await asyncio.gather(
             asyncio.gather(*crm_tasks),
-            self.closing_agent.arun(json.dumps(closing_context(onboarding_data))),
-            self.qual_agent.arun(json.dumps(qual_context(onboarding_data))),
+            _arun_clean(
+                self.closing_agent, json.dumps(closing_context(onboarding_data))
+            ),
+            _arun_clean(self.qual_agent, json.dumps(qual_context(onboarding_data))),
         )
         funnels = []
         for key, resp in zip(funis, crm_results):
