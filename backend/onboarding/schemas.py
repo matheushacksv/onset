@@ -1,6 +1,8 @@
-from ninja import Schema
-from typing import Optional, Any
 from datetime import datetime
+from typing import Any, Optional
+
+from ninja import Schema
+from pydantic_core.core_schema import str_schema
 
 
 class DealOut(Schema):
@@ -15,96 +17,100 @@ class OnboardingCreateIn(Schema):
     pipedrive_deal_id: Optional[str] = None
     pipedrive_deal_name: Optional[str] = None
 
+
 class AttachDealIn(Schema):
     pipedrive_deal_id: str
     pipedrive_deal_name: str
 
+
 class BlankMaterialIn(Schema):
     name: Optional[str] = None
+
 
 class CloneMaterialIn(Schema):
     source_material_id: int
     name: Optional[str] = None
 
+
 class OnboardingStepIn(Schema):
     # Step 1 — Negócio
-    nome_empresa:          Optional[str] = None
-    nicho:                 Optional[str] = None
-    produto:               Optional[str] = None
-    tipo_venda:            Optional[str] = None
-    ticket:                Optional[str] = None
-    modelo_venda:          Optional[str] = None
-    como_vende:            Optional[str] = None
-    crosssell:             Optional[str] = None
-    vendas_atual:          Optional[str] = None
-    vendas_meta:           Optional[str] = None
-    fat_atual:             Optional[str] = None
-    fat_meta:              Optional[str] = None
-    volume_leads:          Optional[str] = None
-    funcionarios:          Optional[str] = None
-    entrada_crm:           Optional[str] = None
-    integracoes:           Optional[str] = None
-    followup_estruturado:  Optional[str] = None
-    gravacoes:             Optional[str] = None
+    nome_empresa: Optional[str] = None
+    nicho: Optional[str] = None
+    produto: Optional[str] = None
+    tipo_venda: Optional[str] = None
+    ticket: Optional[str] = None
+    modelo_venda: Optional[str] = None
+    como_vende: Optional[str] = None
+    crosssell: Optional[str] = None
+    vendas_atual: Optional[str] = None
+    vendas_meta: Optional[str] = None
+    fat_atual: Optional[str] = None
+    fat_meta: Optional[str] = None
+    volume_leads: Optional[str] = None
+    funcionarios: Optional[str] = None
+    entrada_crm: Optional[str] = None
+    integracoes: Optional[str] = None
+    followup_estruturado: Optional[str] = None
+    gravacoes: Optional[str] = None
     # Step 2 — Lead
-    perfil_lead:           Optional[str] = None
-    dor_principal:         Optional[str] = None
-    objecoes:              Optional[str] = None
-    tom:                   Optional[list[str]] = None
-    caso_sucesso:          Optional[str] = None
-    gatilho_urgencia:      Optional[str] = None
+    perfil_lead: Optional[str] = None
+    dor_principal: Optional[str] = None
+    objecoes: Optional[str] = None
+    tom: Optional[list[str]] = None
+    caso_sucesso: Optional[str] = None
+    gatilho_urgencia: Optional[str] = None
     # Step 3 — Funis
-    funis:                 Optional[list[str]] = None
-    trafego_etapas:        Optional[list[Any]] = None
-    trafego_isca:          Optional[str] = None
-    trafego_plataforma:    Optional[str] = None
-    trafego_dias:          Optional[str] = None
-    trafego_bot:           Optional[str] = None
-    prosp_etapas:          Optional[list[Any]] = None
-    prosp_perfil:          Optional[str] = None
-    prosp_dias:            Optional[str] = None
-    prosp_canais:          Optional[list[str]] = None
-    prosp_fonte:           Optional[str] = None
-    social_etapas:         Optional[list[Any]] = None
-    social_plat:           Optional[str] = None
-    social_dias:           Optional[str] = None
-    carteira_etapas:       Optional[list[Any]] = None
-    carteira_quem:         Optional[str] = None
-    cart_freq:             Optional[str] = None
-    posvenda_etapas:       Optional[list[Any]] = None
-    posvenda_obs:          Optional[str] = None
-    custom_etapas:         Optional[list[Any]] = None
-    custom_fluxo:          Optional[str] = None
+    funis: Optional[list[str]] = None
+    trafego_etapas: Optional[list[Any]] = None
+    trafego_isca: Optional[str] = None
+    trafego_plataforma: Optional[str] = None
+    trafego_dias: Optional[str] = None
+    trafego_bot: Optional[str] = None
+    prosp_etapas: Optional[list[Any]] = None
+    prosp_perfil: Optional[str] = None
+    prosp_dias: Optional[str] = None
+    prosp_canais: Optional[list[str]] = None
+    prosp_fonte: Optional[str] = None
+    social_etapas: Optional[list[Any]] = None
+    social_plat: Optional[str] = None
+    social_dias: Optional[str] = None
+    carteira_etapas: Optional[list[Any]] = None
+    carteira_quem: Optional[str] = None
+    cart_freq: Optional[str] = None
+    posvenda_etapas: Optional[list[Any]] = None
+    posvenda_obs: Optional[str] = None
+    custom_etapas: Optional[list[Any]] = None
+    custom_fluxo: Optional[str] = None
     # Step 4 — Fechamento
-    etapas_fechamento:     Optional[list[Any]] = None
+    etapas_fechamento: Optional[list[Any]] = None
     # Step 5 — Scripts
-    wpp_perguntas:         Optional[str] = None
-    wpp_criterio:          Optional[str] = None
-    wpp_desqualifica:      Optional[str] = None
-    wpp_proximo:           Optional[str] = None
-    lig_pitch:             Optional[str] = None
-    lig_perguntas:         Optional[str] = None
-    lig_objecoes:          Optional[str] = None
-    fech_estrutura:        Optional[str] = None
-    particularidades:      Optional[str] = None
-    tem_ref:               Optional[str] = None
-    ref_cliente:           Optional[str] = None
+    wpp_perguntas: Optional[str] = None
+    wpp_criterio: Optional[str] = None
+    wpp_desqualifica: Optional[str] = None
+    wpp_proximo: Optional[str] = None
+    lig_pitch: Optional[str] = None
+    lig_perguntas: Optional[str] = None
+    lig_objecoes: Optional[str] = None
+    fech_estrutura: Optional[str] = None
+    particularidades: Optional[str] = None
+    tem_ref: Optional[str] = None
+    ref_cliente: Optional[str] = None
     # Step 6 — Datas
-    plano_selecionado:     Optional[str] = None
-    assessorias:           Optional[list[Any]] = None
-    cs_encontros:          Optional[list[Any]] = None
-    bonus_encontros:       Optional[list[Any]] = None
+    plano_selecionado: Optional[str] = None
+    assessorias: Optional[list[Any]] = None
+    cs_encontros: Optional[list[Any]] = None
+    bonus_encontros: Optional[list[Any]] = None
     # Step 7 — Pesquisa
-    fonte_conteudo:        Optional[str] = None
-    como_descobriu:        Optional[str] = None
-    decisivo_prospeccao:   Optional[list[str]] = None
-    experiencia_reuniao:   Optional[list[str]] = None
-    indicador_sucesso:     Optional[str] = None
-    fonte_conteudo_outro:      Optional[str] = None
-    como_descobriu_outro:      Optional[str] = None
+    fonte_conteudo: Optional[str] = None
+    como_descobriu: Optional[str] = None
+    decisivo_prospeccao: Optional[list[str]] = None
+    experiencia_reuniao: Optional[list[str]] = None
+    indicador_sucesso: Optional[str] = None
+    fonte_conteudo_outro: Optional[str] = None
+    como_descobriu_outro: Optional[str] = None
     decisivo_prospeccao_outro: Optional[str] = None
     experiencia_reuniao_outro: Optional[str] = None
-    indicador_sucesso_outro:   Optional[str] = None
+    indicador_sucesso_outro: Optional[str] = None
 
 
 class OnboardingOut(Schema):
@@ -116,83 +122,83 @@ class OnboardingOut(Schema):
     created_at: datetime
     updated_at: datetime
     # Step 1
-    nome_empresa:          str
-    nicho:                 str
-    produto:               str
-    tipo_venda:            str
-    ticket:                str
-    modelo_venda:          str
-    como_vende:            str
-    crosssell:             str
-    vendas_atual:          str
-    vendas_meta:           str
-    fat_atual:             str
-    fat_meta:              str
-    volume_leads:          str
-    funcionarios:          str
-    entrada_crm:           str
-    integracoes:           str
-    followup_estruturado:  str
-    gravacoes:             str
+    nome_empresa: str
+    nicho: str
+    produto: str
+    tipo_venda: str
+    ticket: str
+    modelo_venda: str
+    como_vende: str
+    crosssell: str
+    vendas_atual: str
+    vendas_meta: str
+    fat_atual: str
+    fat_meta: str
+    volume_leads: str
+    funcionarios: str
+    entrada_crm: str
+    integracoes: str
+    followup_estruturado: str
+    gravacoes: str
     # Step 2
-    perfil_lead:           str
-    dor_principal:         str
-    objecoes:              str
-    tom:                   list
-    caso_sucesso:          str
-    gatilho_urgencia:      str
+    perfil_lead: str
+    dor_principal: str
+    objecoes: str
+    tom: list
+    caso_sucesso: str
+    gatilho_urgencia: str
     # Step 3
-    funis:                 list
-    trafego_etapas:        list
-    trafego_isca:          str
-    trafego_plataforma:    str
-    trafego_dias:          str
-    trafego_bot:           str
-    prosp_etapas:          list
-    prosp_perfil:          str
-    prosp_dias:            str
-    prosp_canais:          list
-    prosp_fonte:           str
-    social_etapas:         list
-    social_plat:           str
-    social_dias:           str
-    carteira_etapas:       list
-    carteira_quem:         str
-    cart_freq:             str
-    posvenda_etapas:       list
-    posvenda_obs:          str
-    custom_etapas:         list
-    custom_fluxo:          str
+    funis: list
+    trafego_etapas: list
+    trafego_isca: str
+    trafego_plataforma: str
+    trafego_dias: str
+    trafego_bot: str
+    prosp_etapas: list
+    prosp_perfil: str
+    prosp_dias: str
+    prosp_canais: list
+    prosp_fonte: str
+    social_etapas: list
+    social_plat: str
+    social_dias: str
+    carteira_etapas: list
+    carteira_quem: str
+    cart_freq: str
+    posvenda_etapas: list
+    posvenda_obs: str
+    custom_etapas: list
+    custom_fluxo: str
     # Step 4
-    etapas_fechamento:     list
+    etapas_fechamento: list
     # Step 5
-    wpp_perguntas:         str
-    wpp_criterio:          str
-    wpp_desqualifica:      str
-    wpp_proximo:           str
-    lig_pitch:             str
-    lig_perguntas:         str
-    lig_objecoes:          str
-    fech_estrutura:        str
-    particularidades:      str
-    tem_ref:               str
-    ref_cliente:           str
+    wpp_perguntas: str
+    wpp_criterio: str
+    wpp_desqualifica: str
+    wpp_proximo: str
+    lig_pitch: str
+    lig_perguntas: str
+    lig_objecoes: str
+    fech_estrutura: str
+    particularidades: str
+    tem_ref: str
+    ref_cliente: str
     # Step 6
-    plano_selecionado:     str
-    assessorias:           list
-    cs_encontros:          list
-    bonus_encontros:       list
+    plano_selecionado: str
+    assessorias: list
+    cs_encontros: list
+    bonus_encontros: list
     # Step 7
-    fonte_conteudo:        str
-    como_descobriu:        str
-    decisivo_prospeccao:   list
-    experiencia_reuniao:   list
-    indicador_sucesso:     str
-    fonte_conteudo_outro:      str
-    como_descobriu_outro:      str
+    fonte_conteudo: str
+    como_descobriu: str
+    decisivo_prospeccao: list
+    experiencia_reuniao: list
+    indicador_sucesso: str
+    fonte_conteudo_outro: str
+    como_descobriu_outro: str
     decisivo_prospeccao_outro: str
     experiencia_reuniao_outro: str
-    indicador_sucesso_outro:   str
+    indicador_sucesso_outro: str
 
     progress: int = 0
     material_status: Optional[str] = None
@@ -235,7 +241,11 @@ class DevMaterialDetailOut(Schema):
 
     @staticmethod
     def resolve_updated_at(obj):
-        return obj.material.updated_at if hasattr(obj, 'material') and obj.material else obj.updated_at
+        return (
+            obj.material.updated_at
+            if hasattr(obj, 'material') and obj.material
+            else obj.updated_at
+        )
 
     @staticmethod
     def resolve_crm(obj):
@@ -256,15 +266,25 @@ class MaterialLibraryItemOut(Schema):
 
     @staticmethod
     def resolve_published(obj):
-        return bool(obj.material.published) if hasattr(obj, 'material') and obj.material else False
+        return (
+            bool(obj.material.published)
+            if hasattr(obj, 'material') and obj.material
+            else False
+        )
 
     @staticmethod
     def resolve_published_at(obj):
-        return obj.material.published_at if hasattr(obj, 'material') and obj.material else None
-    
+        return (
+            obj.material.published_at
+            if hasattr(obj, 'material') and obj.material
+            else None
+        )
+
+
 class MaterialLibraryPageOut(Schema):
     items: list[MaterialLibraryItemOut]
     total: int
+
 
 class AssessorOption(Schema):
     id: int
@@ -274,13 +294,16 @@ class AssessorOption(Schema):
     def resolve_name(obj):
         return obj.name or obj.email
 
+
 class ShareCreateIn(Schema):
     expires_in_days: Optional[int] = None
     expires_at: Optional[datetime] = None
     password: Optional[str] = None
 
+
 class ShareUnlockIn(Schema):
     password: str
+
 
 class ShareOut(Schema):
     token: str
@@ -295,14 +318,16 @@ class ShareOut(Schema):
     @staticmethod
     def resolve_url(obj):
         return f'/share/{obj.token}'
-    
+
     @staticmethod
     def resolve_has_password(obj):
         return bool(obj.password_hash)
-    
+
+
 class SharedGateOut(Schema):
     password_required: bool = True
     deal_name: str
+
 
 class SharedMaterialOut(Schema):
     deal_name: str
@@ -314,10 +339,12 @@ class SharedMaterialOut(Schema):
     theme: str = 'warm'
     grant: Optional[str] = None
 
+
 class DuplicateOnboardingIn(Schema):
     pipedrive_deal_id: Optional[str] = None
     pipedrive_deal_name: Optional[str] = None
     include_material: bool = False
+
 
 class RuleIn(Schema):
     name: str
@@ -325,12 +352,14 @@ class RuleIn(Schema):
     active: bool = True
     order: int = 0
 
+
 class RuleOut(Schema):
     id: int
     name: str
     content: str
     active: bool
     order: int
+
 
 class RuleWithAckOut(Schema):
     id: int
@@ -341,3 +370,19 @@ class RuleWithAckOut(Schema):
 
 class TranscribeOut(Schema):
     text: str
+
+
+class KnowledgeItem(Schema):
+    name: str
+    size: int
+    updated_at: Optional[datetime] = None
+    indexed: bool
+
+
+class KnowledgeContent(Schema):
+    name: str
+    content: str
+
+
+class KnowledgeNamesIn(Schema):
+    names: list[str]

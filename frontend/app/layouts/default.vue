@@ -62,6 +62,21 @@
             Materiais
           </span>
         </NuxtLink>
+
+        <!-- Knowledge (admin only) -->
+        <NuxtLink
+          v-if="user?.is_superuser"
+          to="/knowledge"
+          class="group relative flex items-center justify-center w-9 h-9 rounded-xl transition-colors"
+          :class="$route.path.startsWith('/knowledge') ? 'bg-black/10 dark:bg-white/10 text-neutral-900 dark:text-white' : 'text-neutral-400 dark:text-white/30 hover:bg-black/5 dark:hover:bg-white/5 hover:text-neutral-700 dark:hover:text-white/70'"
+        >
+          <svg class="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+          </svg>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-800 dark:text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            Knowledge
+          </span>
+        </NuxtLink>
       </nav>
 
       <!-- Bottom: theme toggle + avatar -->
