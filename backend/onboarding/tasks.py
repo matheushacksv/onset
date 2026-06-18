@@ -97,6 +97,24 @@ def _notify(pipedrive_services, deal_id: int, content: str):
         pass
 
 
+def index_knowledge_task(names):
+    """Indexação em massa do knowledge (django-q). Cada doc = S3 GET + embedding OpenAI,
+    por isso é assíncrono. Falha de um não derruba os outros."""
+    import logging
+
+    from .knowledge_api import _index_one
+
+    log = logging.getLogger(__name__)
+    ok = 0
+    for name in names:
+        try:
+            _index_one(name)
+            ok += 1
+        except Exception as e:
+            log.warning(f'[index_kb] {name} falhou: {e}')
+    log.info(f'[index_kb] indexados {ok}/{len(names)}')
+
+
 def prewarm_assistant_task(material_id: int):
     """Popula cache OpenAI das 3 seções do assistant. Não bloqueia uso da IA — só acelera primeira call."""
     import logging
