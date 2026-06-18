@@ -18,6 +18,9 @@ def crm_context(data: dict, funil_key: str = 'default') -> dict:
         'gatilho_urgencia', 'caso_sucesso',
     ]
     base = {k: data[k] for k in base_keys if k in data}
+    # Particularidades do funil (campo `fech_estrutura`): regras que a IA deve respeitar.
+    if data.get('fech_estrutura'):
+        base['particularidades_funil'] = data['fech_estrutura']
 
     funil_specific = {
         'trafego': {

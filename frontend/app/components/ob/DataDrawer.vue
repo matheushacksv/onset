@@ -99,7 +99,7 @@ const SECTIONS: { key: string; title: string; fields: FieldDef[] }[] = [
       { label: 'Ligação — pitch', key: 'lig_pitch' },
       { label: 'Ligação — perguntas', key: 'lig_perguntas' },
       { label: 'Ligação — objeções', key: 'lig_objecoes' },
-      { label: 'Estrutura de fechamento', key: 'fech_estrutura' },
+      { label: 'Particularidades no funil', key: 'fech_estrutura' },
       { label: 'Particularidades', key: 'particularidades' },
       { label: 'Tem referência', key: 'tem_ref' },
       { label: 'Cliente referência', key: 'ref_cliente' },

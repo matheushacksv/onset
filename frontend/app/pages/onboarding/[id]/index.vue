@@ -374,8 +374,8 @@
           </button>
           <div v-show="showFechExtra" class="mt-4">
             <ObCard title="Fechamento — detalhes específicos">
-              <ObField label="Estrutura da reunião de fechamento" hint="Deixe em branco para usar o padrão Enriquecedor.">
-                <textarea v-model="form.fech_estrutura" placeholder="Ex:&#10;1. Rapport (2 min)&#10;2. Recapitulação do SDR&#10;3. Diagnóstico com perguntas" v-bind="textareaClass" style="min-height:100px" />
+              <ObField label="Particularidades no funil" hint="Regras/peculiaridades dos funis que a IA deve respeitar ao montar etapas e cadências.">
+                <textarea v-model="form.fech_estrutura" placeholder="Ex:&#10;Funil de tráfego não usa ligação nos 2 primeiros dias.&#10;Lead de indicação pula a etapa de qualificação.&#10;Nunca mandar áudio no WhatsApp." v-bind="textareaClass" style="min-height:100px" />
               </ObField>
               <ObField label="Particularidades operacionais" hint="Regras de negócio, restrições legais, critério especial..." class="mt-4">
                 <textarea v-model="form.particularidades" placeholder="Ex: Só entra no Pipedrive quem confirmar no chatbot. Leads de indicação vão direto pro closer sem cadência." v-bind="textareaClass" style="min-height:58px" />

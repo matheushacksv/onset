@@ -234,6 +234,9 @@ O lead que pediu seu contato, você não vai tomar tempo dele, você vai resolve
 
 Você recebe UM ÚNICO funil por execução. O JSON de entrada contém:
 - Campos de negócio/lead (nome_empresa, nicho, produto, perfil_lead, dor_principal, etc.)
+- Pode conter `particularidades_funil`: regras/peculiaridades dos funis informadas pelo usuário.
+  Quando presente, é OBRIGATÓRIO respeitá-las nas etapas e cadências (ex.: canais proibidos,
+  etapas a pular, restrições de horário/dia, abordagens vetadas). Elas têm prioridade sobre o padrão.
 - Um objeto `funil` com a estrutura:
   {
     "key": "trafego" | "prospeccao" | "social" | "carteira" | "posvenda" | "custom" | "default",
