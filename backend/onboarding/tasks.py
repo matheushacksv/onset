@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 
 from .agents.schemas import CANONICAL_CHANNELS
@@ -182,7 +183,43 @@ def _sanitize_crm(crm: dict) -> dict:
     return crm
 
 
-def generate_materials_task(onboarding_id: int):
+def _build_template(material_id=None, knowledge_name=None):
+    """Monta o dict de material modelo p/ o workflow seguir como template.
+
+    - material_id  -> GeneratedMaterial concluído: {crm, closing, qualification} (por seção).
+    - knowledge_name -> doc .md indexado no S3: {reference_text}.
+    Qualquer falha (fonte sumiu, S3 fora) = None: geração segue sem modelo, não derruba.
+    """
+    from .models import GeneratedMaterial
+
+    try:
+        if material_id:
+            src = GeneratedMaterial.objects.filter(
+                id=material_id, status='complete'
+            ).first()
+            if src:
+                return {
+                    'crm': src.crm,
+                    'closing': src.closing,
+                    'qualification': src.qualification,
+                }
+        elif knowledge_name:
+            from .knowledge_api import KNOWLEDGE_PREFIX, _valid_name, storage
+
+            if _valid_name(knowledge_name):
+                key = KNOWLEDGE_PREFIX + knowledge_name
+                if storage.exists(key):
+                    with storage.open(key) as f:
+                        text = f.read().decode('utf-8', errors='replace')
+                    return {'reference_text': text}
+    except Exception:
+        logging.getLogger(__name__).warning('template build failed', exc_info=True)
+    return None
+
+
+def generate_materials_task(
+    onboarding_id: int, template_material_id=None, template_knowledge_name=None
+):
     from .models import OnboardingForm, GeneratedMaterial
     from .agents.workflow import MaterialWorkflow, onboarding_to_dict
 
@@ -191,9 +228,13 @@ def generate_materials_task(onboarding_id: int):
     material.status = 'running'
     material.save(update_fields=['status'])
 
+    template = _build_template(template_material_id, template_knowledge_name)
+
     try:
         workflow = MaterialWorkflow()
-        result = asyncio.run(workflow.arun(onboarding_to_dict(onboarding)))
+        result = asyncio.run(
+            workflow.arun(onboarding_to_dict(onboarding), template=template)
+        )
         material.crm = _strip_ctrl(_sanitize_crm(result.crm.model_dump()))
         material.closing = _strip_ctrl(result.closing.model_dump())
         material.qualification = _strip_ctrl(result.qualification.model_dump())

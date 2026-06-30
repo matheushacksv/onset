@@ -381,11 +381,17 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     } catch { /* not yet generated */ }
   }
 
-  const generateMaterials = async () => {
+  const generateMaterials = async (opts?: { templateMaterialId?: number; templateKnowledgeName?: string }) => {
     _stopPolling()
     materialsGenerating.value = true
     try {
-      const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/generate`, { method: 'POST' })
+      const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/generate`, {
+        method: 'POST',
+        body: {
+          template_material_id: opts?.templateMaterialId ?? null,
+          template_knowledge_name: opts?.templateKnowledgeName ?? null,
+        },
+      })
       materials.value = data
       if (data.status !== 'complete') _pollingTimer = setTimeout(_pollOnce, 3000)
     } finally {

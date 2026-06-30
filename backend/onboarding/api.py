@@ -30,6 +30,7 @@ from .agents.schemas import (
     MaterialPatchIn,
     ScriptSuggestionOut,
 )
+from .knowledge_api import _valid_name
 from .models import (
     GeneratedMaterial,
     MaterialShare,
@@ -47,6 +48,7 @@ from .schemas import (
     DealOut,
     DevMaterialDetailOut,
     DuplicateOnboardingIn,
+    GenerateIn,
     MaterialLibraryItemOut,
     MaterialLibraryPageOut,
     OnboardingCreateIn,
@@ -813,7 +815,7 @@ def suggest_scripts(request, id: int):
     '/{id}/generate',
     response={200: MaterialOut, 202: MaterialOut, 400: Error, 403: Error},
 )
-def generate_materials(request, id: int):
+def generate_materials(request, id: int, data: GenerateIn = None):
     if _is_desenvolvedor(request.auth):
         return Status(403, Error(detail='Acesso negado'))
     onboarding = get_object_or_404(OnboardingForm, id=id)
@@ -822,9 +824,20 @@ def generate_materials(request, id: int):
 
     if not created and material.status == 'complete':
         return Status(200, material)
+
+    template_material_id = data.template_material_id if data else None
+    template_knowledge_name = data.template_knowledge_name if data else None
+    if template_knowledge_name and not _valid_name(template_knowledge_name):
+        return Status(400, Error(detail='Nome de material modelo inválido'))
+
     material.status = 'pending'
     material.save(update_fields=['status', 'error'])
-    async_task('onboarding.tasks.generate_materials_task', onboarding.id)
+    async_task(
+        'onboarding.tasks.generate_materials_task',
+        onboarding.id,
+        template_material_id,
+        template_knowledge_name,
+    )
     return Status(202, material)
 
 

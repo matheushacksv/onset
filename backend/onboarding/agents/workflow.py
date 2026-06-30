@@ -154,6 +154,19 @@ async def _arun_clean(agent: Agent, payload: str, attempts: int = 2):
     return resp
 
 
+def _with_template(ctx: dict, template: dict | None, section: str) -> dict:
+    """Injeta o material modelo no context do agente (mesmo padrão de campo-extra que
+    `particularidades_funil`). `modelo` = JSON da seção de um material pronto; `modelo_referencia`
+    = texto cru de um doc do knowledge. None = sem modelo (input idêntico ao comportamento atual)."""
+    if not template:
+        return ctx
+    if template.get('reference_text'):
+        ctx['modelo_referencia'] = template['reference_text']
+    elif template.get(section):
+        ctx['modelo'] = template[section]
+    return ctx
+
+
 class MaterialWorkflow:
     def __init__(self):
         knowledge = get_knowledge()
@@ -195,14 +208,27 @@ class MaterialWorkflow:
             output_schema=QualificationScript,
         )
 
-    async def arun(self, onboarding_data: dict) -> GeneratedMaterialResult:
+    async def arun(
+        self, onboarding_data: dict, template: dict | None = None
+    ) -> GeneratedMaterialResult:
         funis: list[str] = onboarding_data.get('funis') or []
         if not funis:
             funis = ['default']
 
+        # Com modelo, o CRM segue a estrutura/estilo do `modelo`/`modelo_referencia` no input —
+        # o RAG amplo (5 docs/funil) só dilui. Desliga só no CRM; closing/qual mantêm os exemplos
+        # do KB. Workflow é instanciado por task, então mutar o agent aqui é seguro.
+        if template:
+            self.crm_agent.add_knowledge_to_context = False
+
         crm_tasks = [
             _arun_clean(
-                self.crm_agent, json.dumps(crm_context(onboarding_data, funil_key=k))
+                self.crm_agent,
+                json.dumps(
+                    _with_template(
+                        crm_context(onboarding_data, funil_key=k), template, 'crm'
+                    )
+                ),
             )
             for k in funis
         ]
@@ -213,9 +239,19 @@ class MaterialWorkflow:
             self.validator.arun(json.dumps(onboarding_data)),
             asyncio.gather(*crm_tasks),
             _arun_clean(
-                self.closing_agent, json.dumps(closing_context(onboarding_data))
+                self.closing_agent,
+                json.dumps(
+                    _with_template(closing_context(onboarding_data), template, 'closing')
+                ),
             ),
-            _arun_clean(self.qual_agent, json.dumps(qual_context(onboarding_data))),
+            _arun_clean(
+                self.qual_agent,
+                json.dumps(
+                    _with_template(
+                        qual_context(onboarding_data), template, 'qualification'
+                    )
+                ),
+            ),
         )
         alerts: list[str] = val_resp.content.alerts if val_resp.content else []
         funnels = []
