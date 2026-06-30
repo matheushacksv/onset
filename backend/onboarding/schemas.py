@@ -386,3 +386,9 @@ class KnowledgeContent(Schema):
 
 class KnowledgeNamesIn(Schema):
     names: list[str]
+
+
+class GenerateIn(Schema):
+    """Modelo opcional p/ a geração seguir como template (mutuamente exclusivos)."""
+    template_material_id: Optional[int] = None
+    template_knowledge_name: Optional[str] = None

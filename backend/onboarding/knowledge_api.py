@@ -127,6 +127,13 @@ def list_knowledge(request):
     return items
 
 
+@router.get('/names', response={200: list[str]})
+def knowledge_names(request):
+    """Nomes dos docs indexados — fonte do picker de material modelo na geração.
+    SEM gate superuser: vendedor precisa escolher template (só auth JWT global)."""
+    return sorted(_indexed_names())
+
+
 @router.get('/content', response={200: KnowledgeContent, 403: Error, 404: Error})
 def view_knowledge(request, name: str):
     if deny := _deny(request):

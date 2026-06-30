@@ -16,6 +16,9 @@ export const useKnowledge = () => {
   const list = (): Promise<KnowledgeItem[]> =>
     fetchAuth<KnowledgeItem[]>('/api/knowledge/')
 
+  const names = (): Promise<string[]> =>
+    fetchAuth<string[]>('/api/knowledge/names')
+
   const view = (name: string): Promise<KnowledgeContent> =>
     fetchAuth<KnowledgeContent>(`/api/knowledge/content?name=${encodeURIComponent(name)}`)
 
@@ -52,5 +55,5 @@ export const useKnowledge = () => {
     URL.revokeObjectURL(url)
   }
 
-  return { list, view, upload, remove, download, index, indexBulk, unindex }
+  return { list, names, view, upload, remove, download, index, indexBulk, unindex }
 }

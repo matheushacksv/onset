@@ -823,12 +823,12 @@ const submitGuarded = async () => {
   }
 }
 
-const handleCreateMaterial = async (payload: { mode: 'ai' | 'blank' | 'copy'; sourceId?: number }) => {
+const handleCreateMaterial = async (payload: { mode: 'ai' | 'blank' | 'copy'; sourceId?: number; templateMaterialId?: number; templateKnowledgeName?: string }) => {
   creatingMaterial.value = true
   try {
     if (payload.mode === 'ai') {
       createModalOpen.value = false
-      await generateMaterials()
+      await generateMaterials({ templateMaterialId: payload.templateMaterialId, templateKnowledgeName: payload.templateKnowledgeName })
     } else if (payload.mode === 'blank') {
       await createManualMaterial()
       createModalOpen.value = false

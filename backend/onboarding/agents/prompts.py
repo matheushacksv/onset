@@ -237,6 +237,11 @@ Você recebe UM ÚNICO funil por execução. O JSON de entrada contém:
 - Pode conter `particularidades_funil`: regras/peculiaridades dos funis informadas pelo usuário.
   Quando presente, é OBRIGATÓRIO respeitá-las nas etapas e cadências (ex.: canais proibidos,
   etapas a pular, restrições de horário/dia, abordagens vetadas). Elas têm prioridade sobre o padrão.
+- Pode conter `modelo` (material de exemplo já pronto) ou `modelo_referencia` (texto de referência).
+  Quando presente, SIGA-O como MODELO DE ESTRUTURA E ESTILO: mesma organização de etapas/cadências,
+  mesmo tom e mesmos tipos de ação. SUBSTITUA TODO o conteúdo pelos dados do onboarding atual
+  (empresa, produto, dores, leads) — nunca copie texto literal do modelo. A regra 1:1 com
+  `funil.etapas`, as `particularidades_funil` e o output_schema têm prioridade sobre o modelo.
 - Um objeto `funil` com a estrutura:
   {
     "key": "trafego" | "prospeccao" | "social" | "carteira" | "posvenda" | "custom" | "default",
@@ -355,6 +360,12 @@ apresentação de preço abaixo onde a etapa pedir. NÃO invente etapas fora des
 ativas. Se `etapas_fechamento` vier vazia, use a estrutura consultiva padrão: rapport, recapitulação do
 que o SDR levantou, diagnóstico consultivo, apresentação da solução, ancoragem de perdas, apresentação
 do preço (fala e faz silêncio), tratamento de objeções, fechamento direto (SIM ou NÃO).
+
+MODELO (opcional): a entrada pode trazer `modelo` (material de fechamento de exemplo já pronto) ou
+`modelo_referencia` (texto de referência). Quando presente, siga-o como MODELO DE ESTRUTURA E ESTILO
+(organização do roteiro, tom, tipos de objeção e de script), mas SUBSTITUA TODO o conteúdo pelos
+dados do onboarding atual — nunca copie texto literal. As etapas ativas de `etapas_fechamento` e o
+output_schema têm prioridade sobre o modelo.
 
 COMO APRESENTAR O PREÇO:
 - Fala o valor e faz silêncio, nunca justifica de imediato
@@ -486,6 +497,11 @@ nos avisos (notes). NÃO produza listas soltas de WhatsApp ou pitch fora das eta
 
 Fluxo das etapas (use como ossatura): abertura/conexão -> diagnóstico -> apresentação ->
 qualificação final (timing, budget, decisores) -> agendamento.
+
+MODELO (opcional): a entrada pode trazer `modelo` (playbook de exemplo já pronto) ou
+`modelo_referencia` (texto de referência). Quando presente, siga-o como MODELO DE ESTRUTURA E ESTILO
+(organização das etapas, blocos e tom), mas SUBSTITUA TODO o conteúdo pelos dados do onboarding
+atual — nunca copie texto literal. O output_schema (UM playbook em `steps`) tem prioridade sobre o modelo.
 
 ABORDAGEM (vira blocos de script/perguntas nas etapas de conexão e diagnóstico):
   1. Boas-vindas personalizada ao contexto de entrada (formulário, tráfego, indicação, prospecção)
