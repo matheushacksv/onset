@@ -60,6 +60,10 @@ services:
     build: ./frontend
     environment:
       NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
+      # Proxy interno (/api/**) vai via Traefik, NÃO direto em backend:8000.
+      # gunicorn (sync/gthread) corrompe request sob keep-alive do pool undici do
+      # nitro → 400 DisallowedHost intermitente. Traefik buffera a conexão e resolve.
+      NUXT_INTERNAL_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
     networks:
       - default
       - traefik

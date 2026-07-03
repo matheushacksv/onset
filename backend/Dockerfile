@@ -13,5 +13,5 @@ CMD ["sh", "-c", "\
     uv run python manage.py createcachetable && \
     uv run python manage.py collectstatic --noinput && \
     uv run gunicorn core.wsgi:application --bind 0.0.0.0:8000 \
-    --workers ${WEB_CONCURRENCY:-4} --timeout 60 \
+    --workers ${WEB_CONCURRENCY:-4} --worker-class gthread --threads ${GUNICORN_THREADS:-4} --timeout 60 \
 "]
