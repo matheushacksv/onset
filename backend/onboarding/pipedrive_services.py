@@ -26,11 +26,7 @@ def list_deals():
         response.raise_for_status()
         data = response.json()
 
-        for deal in data['data']:
-            if not deal.get('custom_fields', {}).get(
-                '50ccb59a104c8aaea9e5f26da66996865ca5efea'
-            ):
-                qualificados.append(deal)
+        qualificados.extend(data['data'])
 
         cursor = data.get('additional_data', {}).get('next_cursor')
         if not cursor:
