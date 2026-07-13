@@ -58,11 +58,18 @@ services:
 
   frontend:
     build: ./frontend
+    # Resolver apionboarding via upstream (1.1.1.1) FALHA ~40% dentro do container
+    # (EAI_AGAIN na zona henriquegoularte.com.br) → proxy interno /api dava 502 Bad
+    # Gateway intermitente. Pin no IP do host pula o DNS flaky; request ainda entra
+    # pelo Traefik (:443), que buffera o gunicorn.
+    # ponytail: IP fixo do host. Se o IP do servidor mudar, atualizar aqui.
+    extra_hosts:
+      - "apionboarding.henriquegoularte.com.br:178.156.169.148"
     environment:
       NUXT_PUBLIC_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
-      # Proxy interno (/api/**) vai via Traefik, NÃO direto em backend:8000.
-      # gunicorn (sync/gthread) corrompe request sob keep-alive do pool undici do
-      # nitro → 400 DisallowedHost intermitente. Traefik buffera a conexão e resolve.
+      # Proxy interno (/api/**) vai via Traefik (URL pública, resolvida pelo pin acima),
+      # NÃO direto em backend:8000 — undici direto no gunicorn = 400 intermitente
+      # ("Invalid HTTP request" do gunicorn, some quando o Traefik buffera a conexão).
       NUXT_INTERNAL_BACKEND_URL: https://apionboarding.henriquegoularte.com.br
     networks:
       - default
