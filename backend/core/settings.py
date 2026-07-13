@@ -1,10 +1,13 @@
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
+
 from decouple import config
 
 # Expõe a chave ao os.environ para SDKs que não usam python-decouple (ex: OpenAI)
 os.environ.setdefault('OPENAI_API_KEY', config('OPENAI_API_KEY', default=''))
+# SDK da Anthropic (agno) lê ANTHROPIC_API_KEY; nossa var no .env chama CLAUDE_API_KEY
+os.environ.setdefault('ANTHROPIC_API_KEY', config('CLAUDE_API_KEY', default=''))
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,9 +24,13 @@ DEBUG = config('DEBUG', cast=bool, default=True)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost').split(',')
 
-CSRF_TRUSTED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
+CSRF_TRUSTED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS', default='http://localhost:3000'
+).split(',')
 
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS', default='http://localhost:3000'
+).split(',')
 
 
 # Application definition
@@ -40,11 +47,11 @@ INSTALLED_APPS = [
     'ninja_extra',
     'corsheaders',
     'django_q',
-    'onboarding'
+    'onboarding',
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -136,7 +143,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 NINJA_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
 
 
@@ -152,12 +159,10 @@ STORAGES = {
             'bucket_name': config('MINIO_BUCKET_NAME'),
             'default_acl': 'public-read',
             'querystring_auth': False,
-            'file_overwrite': False
-        }
+            'file_overwrite': False,
+        },
     },
-    'staticfiles': {
-        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'
-    }
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
 }
 
 # Cache (compartilhado entre web e workers via Postgres)
@@ -180,7 +185,7 @@ Q_CLUSTER = {
     'timeout': 900,
     'retry': 1200,
     'max_attempts': 1,
-    'orm': 'default'
+    'orm': 'default',
 }
 
 # Email

@@ -3,7 +3,7 @@ import secrets
 from datetime import timedelta
 
 from agno.agent import Agent
-from agno.models.openai import OpenAIChat
+from agno.models.anthropic import Claude
 from django.contrib.auth.hashers import check_password, make_password
 from django.core import signing
 from django.db.models import F
@@ -800,7 +800,7 @@ def suggest_scripts(request, id: int):
     onboarding = get_object_or_404(OnboardingForm, id=id)
     data = onboarding_to_dict(onboarding)
     agent = Agent(
-        model=OpenAIChat('gpt-5.4-nano'),
+        model=Claude(id='claude-sonnet-5'),
         instructions=SCRIPT_SUGGEST_PROMPT,
         output_schema=ScriptSuggestionOut,
     )

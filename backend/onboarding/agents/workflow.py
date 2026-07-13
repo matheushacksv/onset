@@ -8,7 +8,7 @@ from pathlib import Path
 import boto3
 from agno.agent import Agent
 from agno.knowledge import Knowledge
-from agno.models.openai import OpenAIChat
+from agno.models.anthropic import Claude
 from agno.tools.knowledge import KnowledgeTools
 from agno.vectordb.pgvector import PgVector
 from decouple import config
@@ -122,7 +122,8 @@ FUNIL_LABELS = {
 # temperatura no default (não setar baixa): o retry em _arun_clean precisa de variância —
 # re-roll só limpa o \x7f se sair diferente. temperatura baixa re-produz o mesmo \x7f e só
 # desperdiça o re-run. Default = retry efetivo (conserta no 1º re-roll) + sem custo extra.
-MODEL = OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY'))
+# max_tokens 16000: material CRM com muitas etapas estoura o default de 8192 do agno
+MODEL = Claude(id='claude-sonnet-5', api_key=config('CLAUDE_API_KEY'), max_tokens=16000)
 
 
 # gpt-5.4-nano às vezes emite chars de controle (ex.: \x7f no lugar de acento) — quirk de

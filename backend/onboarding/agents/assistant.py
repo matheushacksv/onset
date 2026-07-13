@@ -3,7 +3,7 @@ import json
 from typing import Literal, Optional
 
 from agno.agent import Agent
-from agno.models.openai import OpenAIChat
+from agno.models.anthropic import Claude
 from decouple import config
 
 from onboarding.models import GeneratedMaterial
@@ -64,10 +64,10 @@ class AssistantSession:
 
     def build_warm_agent(self) -> Agent:
         """Agent leve pra prewarm — mesmo system prompt, sem knowledge/tools.
-        Popula cache OpenAI sem disparar tool calls/searches."""
+        Popula o prompt cache do modelo sem disparar tool calls/searches."""
         instructions, _ = self._build_instructions_and_tools()
         return Agent(
-            model=OpenAIChat('gpt-5.4-mini', api_key=config('OPENAI_API_KEY')),
+            model=Claude(id='claude-sonnet-5', api_key=config('CLAUDE_API_KEY')),
             instructions=instructions,
             markdown=False,
         )
@@ -117,7 +117,7 @@ class AssistantSession:
     def _build_agent(self) -> Agent:
         instructions, tools = self._build_instructions_and_tools()
         return Agent(
-            model=OpenAIChat('gpt-5.4-nano', api_key=config('OPENAI_API_KEY')),
+            model=Claude(id='claude-sonnet-5', api_key=config('CLAUDE_API_KEY')),
             instructions=instructions,
             tools=tools,
             knowledge=get_knowledge(),
