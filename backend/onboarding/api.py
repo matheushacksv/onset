@@ -822,7 +822,7 @@ def generate_materials(request, id: int, data: GenerateIn = None):
 
     material, created = GeneratedMaterial.objects.get_or_create(onboarding=onboarding)
 
-    if not created and material.status == 'complete':
+    if not created and material.status == 'complete' and not (data and data.force):
         return Status(200, material)
 
     template_material_id = data.template_material_id if data else None

@@ -381,7 +381,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     } catch { /* not yet generated */ }
   }
 
-  const generateMaterials = async (opts?: { templateMaterialId?: number; templateKnowledgeName?: string }) => {
+  const generateMaterials = async (opts?: { templateMaterialId?: number; templateKnowledgeName?: string; force?: boolean }) => {
     _stopPolling()
     materialsGenerating.value = true
     try {
@@ -390,6 +390,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
         body: {
           template_material_id: opts?.templateMaterialId ?? null,
           template_knowledge_name: opts?.templateKnowledgeName ?? null,
+          force: opts?.force ?? false,
         },
       })
       materials.value = data

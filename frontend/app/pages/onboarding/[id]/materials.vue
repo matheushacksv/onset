@@ -1022,7 +1022,7 @@ watch(editedMaterials, () => {
 
 const handleRegenerate = async () => {
   generating.value = true
-  await generateMaterials()
+  await generateMaterials({ force: true })
   generating.value = false
 }
 

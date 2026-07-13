@@ -392,3 +392,4 @@ class GenerateIn(Schema):
     """Modelo opcional p/ a geração seguir como template (mutuamente exclusivos)."""
     template_material_id: Optional[int] = None
     template_knowledge_name: Optional[str] = None
+    force: bool = False  # regenerar por cima de material completo

@@ -720,7 +720,7 @@
               <button
                 class="px-4 py-2.5 text-sm text-white/40 hover:text-white/70 border border-white/10 rounded-full transition-all"
                 :disabled="materialsGenerating"
-                @click="generateMaterials"
+                @click="generateMaterials({ force: true })"
               >
                 Regenerar
               </button>
