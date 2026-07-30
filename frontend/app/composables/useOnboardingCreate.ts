@@ -7,6 +7,12 @@ export const useOnboardingCreate = () => {
       body: { pipedrive_deal_id, pipedrive_deal_name },
     })
 
+  const createWithoutDeal = (name?: string) =>
+    fetchAuth<{ id: number }>('/api/onboarding/', {
+      method: 'POST',
+      body: { pipedrive_deal_name: name },
+    })
+
   const createBlankMaterial = (name?: string) =>
     fetchAuth<{ id: number }>('/api/onboarding/blank-material', {
       method: 'POST',
@@ -25,5 +31,5 @@ export const useOnboardingCreate = () => {
       body: { pipedrive_deal_id, pipedrive_deal_name },
     })
 
-  return { createWithDeal, createBlankMaterial, cloneMaterial, attachDeal }
+  return { createWithDeal, createWithoutDeal, createBlankMaterial, cloneMaterial, attachDeal }
 }

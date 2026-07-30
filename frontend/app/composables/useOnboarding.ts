@@ -19,10 +19,10 @@ export interface QualBlock { kind: QualBlockKind; label: string; open: string; p
 export type QualNoteKind = 'instrucao' | 'alerta' | 'anote' | 'stop' | 'transicao'
 export interface QualNote { kind: QualNoteKind; title: string; text: string }
 export interface QualPlaybookStep { num: string; title: string; phase: string; subtitle: string; gpctba: string; objective: string; blocks: QualBlock[]; notes: QualNote[] }
-export interface QualificationScript { profile: string; framework: string; steps?: QualPlaybookStep[]; advance_criteria: string[]; disqualification_criteria: string[]; whatsapp_flow?: QualStep[]; call_pitch?: string }
+export interface QualificationScript { profile: string | null; framework: string; steps?: QualPlaybookStep[]; advance_criteria: string[]; disqualification_criteria: string[]; whatsapp_flow?: QualStep[]; call_pitch?: string }
 export interface MaterialOut {
   id: number
-  status: 'idle' | 'pending' | 'running' | 'complete' | 'failed'
+  status: 'idle' | 'pending' | 'running' | 'complete' | 'failed' | 'cancelled'
   crm?: CRMScript
   closing?: ClosingMaterial
   qualification?: QualificationScript
@@ -400,6 +400,11 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     }
   }
 
+  const cancelMaterials = async () => {
+    const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/generate/cancel`, { method: 'POST' })
+    materials.value = data
+  }
+
   const createManualMaterial = async () => {
     const data = await fetchAuth<MaterialOut>(`/api/onboarding/${resolvedId}/materials/manual`, { method: 'POST' })
     materials.value = data
@@ -497,8 +502,8 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
   const submit = async () => {
     submitting.value = true
     try {
-      await fetchAuth(`/api/onboarding/${resolvedId}/submit`, { method: 'POST' })
-      status.value = 'synced'
+      const res = await fetchAuth<{ status: string }>(`/api/onboarding/${resolvedId}/submit`, { method: 'POST' })
+      status.value = res.status as 'draft' | 'complete' | 'synced'
     } finally {
       submitting.value = false
     }
@@ -582,7 +587,7 @@ export const useOnboarding = (id: Ref<string | string[]> | string) => {
     toggleChip, selectOne, toggleFunil, selectPlano, addEtapa, addBonus, moveInList,
     addEtapaFechamento, removeEtapaFechamento, moveEtapaFechamento,
     PLANOS, suggestingScripts,
-    materials, materialsGenerating, loadMaterials, generateMaterials, saveMaterials,
+    materials, materialsGenerating, loadMaterials, generateMaterials, cancelMaterials, saveMaterials,
     createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
     prepareAssistant, publishMaterial, suggestScripts,
   }

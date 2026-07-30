@@ -620,8 +620,19 @@
           </div>
         </div>
 
-        <div class="bg-blue-400/5 ring-1 ring-blue-400/10 rounded-2xl p-4 mb-6 text-sm text-blue-300/80 leading-relaxed">
+        <div v-if="dealId" class="bg-blue-400/5 ring-1 ring-blue-400/10 rounded-2xl p-4 mb-6 text-sm text-blue-300/80 leading-relaxed">
           Ao clicar em <strong class="text-blue-300">Finalizar e Sincronizar</strong>, uma nota com o briefing completo será criada no deal do Pipedrive.
+        </div>
+        <div v-else class="bg-amber-400/5 ring-1 ring-amber-400/10 rounded-2xl p-4 mb-6 flex items-center justify-between gap-4">
+          <p class="text-sm text-amber-300/80 leading-relaxed">
+            Sem deal vinculado — o material será finalizado, mas <strong class="text-amber-300">não será sincronizado com o Pipedrive</strong>.
+          </p>
+          <button
+            class="shrink-0 px-4 py-2 text-xs font-semibold text-amber-300 border border-amber-400/30 rounded-full hover:bg-amber-400/10 transition-all"
+            @click="attachOpen = true"
+          >
+            Anexar deal
+          </button>
         </div>
 
         <!-- Resumo -->
@@ -651,6 +662,12 @@
           </svg>
           <span class="text-sm text-emerald-300">Sincronizado com o Pipedrive com sucesso.</span>
         </div>
+        <div v-else-if="status === 'complete'" class="mt-6 flex items-center gap-3 p-4 bg-blue-400/5 ring-1 ring-blue-400/10 rounded-2xl">
+          <svg class="w-5 h-5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span class="text-sm text-blue-300">Material finalizado — sem deal vinculado, não sincronizado com o Pipedrive.</span>
+        </div>
 
         <!-- ── Materiais IA ── -->
         <div class="mt-10 border-t border-white/[0.06] pt-8">
@@ -668,10 +685,13 @@
             </ul>
           </div>
 
-          <!-- idle / failed: generate button -->
-          <div v-if="!materials || materials.status === 'failed'" class="flex flex-col items-center py-12 gap-4">
+          <!-- idle / failed / cancelled: generate button -->
+          <div v-if="!materials || materials.status === 'failed' || materials.status === 'cancelled'" class="flex flex-col items-center py-12 gap-4">
             <p v-if="materials?.status === 'failed'" class="text-red-400/70 text-sm text-center max-w-md">
               {{ materials.error || 'Falha na geração. Tente novamente.' }}
+            </p>
+            <p v-else-if="materials?.status === 'cancelled'" class="text-white/40 text-sm text-center max-w-md">
+              Geração cancelada.
             </p>
             <button
               class="px-8 py-3 bg-white text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center gap-2"
@@ -694,6 +714,13 @@
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
             <p class="text-white/40 text-sm">Gerando materiais... (~20–30s)</p>
+            <button
+              class="px-4 py-2 text-xs text-white/40 hover:text-white/70 border border-white/10 rounded-full transition-all disabled:opacity-40"
+              :disabled="cancellingMaterial"
+              @click="handleCancelGeneration"
+            >
+              {{ cancellingMaterial ? 'Cancelando...' : 'Cancelar geração' }}
+            </button>
           </div>
 
           <!-- complete: open in new tab -->
@@ -750,17 +777,17 @@
             {{ saving ? 'Salvando...' : 'Próximo →' }}
           </button>
           <button
-            v-else-if="status !== 'synced'"
+            v-else-if="status !== 'synced' && status !== 'complete'"
             class="px-6 py-2 bg-white text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-40 flex items-center gap-2"
             :disabled="submitting || pendingRules"
-            :title="pendingRules ? 'Confirme todas as regras antes de sincronizar' : ''"
+            :title="pendingRules ? 'Confirme todas as regras antes de finalizar' : ''"
             @click="submitGuarded"
           >
             <svg v-if="submitting" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
-            {{ submitting ? 'Sincronizando...' : '✦ Finalizar e Sincronizar' }}
+            {{ submitting ? (dealId ? 'Sincronizando...' : 'Finalizando...') : (dealId ? '✦ Finalizar e Sincronizar' : '✦ Finalizar') }}
           </button>
         </div>
       </div>
@@ -773,11 +800,19 @@
       @close="createModalOpen = false"
       @create="handleCreateMaterial"
     />
+
+    <ObAttachDealModal
+      :open="attachOpen"
+      :onboarding-id="Number(id)"
+      @close="attachOpen = false"
+      @attached="onAttachedDeal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { RuleWithAck } from '~/composables/useRules'
+import { cleanDealName } from '~/composables/useOnboarding'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -788,15 +823,31 @@ const {
   toggleChip, toggleFunil, selectPlano, addEtapa, addBonus, moveInList,
   addEtapaFechamento, removeEtapaFechamento, moveEtapaFechamento,
   PLANOS,
-  materials, materialsGenerating, loadMaterials, generateMaterials,
+  materials, materialsGenerating, loadMaterials, generateMaterials, cancelMaterials,
   createManualMaterial, copyMaterialFrom, loadMaterialLibrary,
   suggestingScripts, suggestScripts,
 } = useOnboarding(id)
 
 const createModalOpen = ref(false)
 const creatingMaterial = ref(false)
+const cancellingMaterial = ref(false)
+const handleCancelGeneration = async () => {
+  cancellingMaterial.value = true
+  try {
+    await cancelMaterials()
+  } finally {
+    cancellingMaterial.value = false
+  }
+}
 const showFechExtra = ref(false)
 const router = useRouter()
+
+const attachOpen = ref(false)
+const onAttachedDeal = (deal: { id: number; title: string }) => {
+  dealId.value = String(deal.id)
+  dealName.value = cleanDealName(deal.title)
+  attachOpen.value = false
+}
 
 // ── Regras de onboarding ──
 const { loadOnboardingRules, toggleAck } = useRules()
@@ -904,10 +955,9 @@ const openMaterials = () => window.open(`/onboarding/${id}/materials`, '_blank')
 await load()
 await loadMaterials()
 
-// Placeholder (sem deal + material já completo) → redireciona pro editor
-if (!dealId.value && materials.value?.status === 'complete') {
-  await navigateTo(`/onboarding/${id}/materials`, { replace: true })
-}
+// Sem sinal confiável pra distinguir "onboarding sem deal preenchendo o form"
+// de "material em branco" (ambos ficam com dealId nulo) — removido o auto-redirect
+// que existia aqui. Blank-material continua acessível via "Ver materiais" na lista.
 
 try { rules.value = await loadOnboardingRules(id) } catch { rules.value = [] }
 </script>

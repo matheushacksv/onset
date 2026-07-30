@@ -966,9 +966,9 @@ function normalizeMaterial(m: MaterialOut): MaterialOut {
     }
   }
   if (!copy.qualification || typeof copy.qualification !== 'object') {
-    copy.qualification = { profile: '', framework: '', steps: [], advance_criteria: [], disqualification_criteria: [] }
+    copy.qualification = { profile: null, framework: '', steps: [], advance_criteria: [], disqualification_criteria: [] }
   } else {
-    copy.qualification.profile ??= ''
+    copy.qualification.profile ??= null
     copy.qualification.framework ??= ''
     copy.qualification.steps ??= []
     copy.qualification.advance_criteria ??= []

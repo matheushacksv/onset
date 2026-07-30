@@ -10,10 +10,10 @@
         <div v-if="!isDesenvolvedor" ref="newMenuRef" class="relative">
           <button
             class="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-sm font-semibold rounded-full hover:-translate-y-0.5 transition-all disabled:opacity-50"
-            :disabled="loadingDeals || creatingBlank"
+            :disabled="loadingDeals || creatingBlank || creatingNoDeal"
             @click="newMenuOpen = !newMenuOpen"
           >
-            <svg v-if="loadingDeals || creatingBlank" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <svg v-if="loadingDeals || creatingBlank || creatingNoDeal" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
             </svg>
@@ -32,6 +32,10 @@
             <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewWithDeal">
               <p class="font-medium">Onboarding com deal</p>
               <p class="text-[11px] text-white/40">Vincula a um deal do Pipedrive</p>
+            </button>
+            <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" :disabled="creatingNoDeal" @click="onNewNoDeal">
+              <p class="font-medium">Onboarding sem deal</p>
+              <p class="text-[11px] text-white/40">Preenche o formulário completo; anexa o deal depois</p>
             </button>
             <button class="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 transition-colors" @click="onNewBlank">
               <p class="font-medium">Material em branco (IA)</p>
@@ -365,15 +369,27 @@ const onDuplicated = async (newId: number) => {
 }
 
 // ── Novo (dropdown) ─────────────────────────────────────────
-const { createBlankMaterial } = useOnboardingCreate()
+const { createWithoutDeal, createBlankMaterial } = useOnboardingCreate()
 const newMenuRef = ref<HTMLElement | null>(null)
 const newMenuOpen = ref(false)
 const creatingBlank = ref(false)
+const creatingNoDeal = ref(false)
 const cloneOpen = ref(false)
 
 const onNewWithDeal = async () => {
   newMenuOpen.value = false
   await loadDeals()
+}
+const onNewNoDeal = async () => {
+  if (creatingNoDeal.value) return
+  newMenuOpen.value = false
+  creatingNoDeal.value = true
+  try {
+    const r = await createWithoutDeal()
+    await navigateTo(`/onboarding/${r.id}`)
+  } finally {
+    creatingNoDeal.value = false
+  }
 }
 const onNewBlank = async () => {
   if (creatingBlank.value) return

@@ -138,6 +138,7 @@ class GeneratedMaterial(models.Model):
         RUNNING = 'running'
         COMPLETE = 'complete'
         FAILED = 'failed'
+        CANCELLED = 'cancelled'
 
     onboarding = models.OneToOneField(
         OnboardingForm, on_delete=models.CASCADE, related_name='material'

@@ -142,16 +142,32 @@ def _has_ctrl(content) -> bool:
     return bool(_CTRL_RE.search(s))
 
 
+def _is_valid_output(agent: Agent, resp) -> bool:
+    """Agno não levanta exceção quando o modelo não retorna JSON válido pro
+    output_schema — só loga um warning e deixa `resp.content` como string crua
+    (content_type continua 'str'). Sem checar isso, o caller acessa atributo
+    (.funnels, .alerts) numa string e explode com AttributeError confuso."""
+    schema = agent.output_schema
+    return schema is None or isinstance(resp.content, schema)
+
+
 async def _arun_clean(agent: Agent, payload: str, attempts: int = 2):
-    """Roda o agent; se o output tiver chars de controle, re-roda até `attempts` vezes.
-    Retorna a primeira resposta limpa (ou a última tentativa se nenhuma limpar).
+    """Roda o agent; se o output tiver chars de controle OU não tiver sido
+    parseado pro output_schema, re-roda até `attempts` vezes.
+    Retorna a primeira resposta limpa e válida. Se nenhuma tentativa validar,
+    levanta erro claro em vez de deixar o caller quebrar com AttributeError.
     attempts baixo de propósito: cada re-roll soma latência e a task tem timeout (Q_CLUSTER).
     O strip em tasks._strip_ctrl é a rede de segurança final se o re-roll não limpar."""
     resp = await agent.arun(payload)
     for _ in range(attempts - 1):
-        if not _has_ctrl(resp.content):
+        if _is_valid_output(agent, resp) and not _has_ctrl(resp.content):
             return resp
         resp = await agent.arun(payload)
+    if not _is_valid_output(agent, resp):
+        schema_name = getattr(agent.output_schema, '__name__', agent.output_schema)
+        raise ValueError(
+            f'Agent não retornou o formato esperado ({schema_name}) após {attempts} tentativas'
+        )
     return resp
 
 
@@ -237,7 +253,7 @@ class MaterialWorkflow:
         # Validator roda EM PARALELO com os content agents — seu output (alerts) é
         # independente, não alimenta crm/closing/qual. Antes serializava antes de tudo.
         val_resp, crm_results, closing, qual = await asyncio.gather(
-            self.validator.arun(json.dumps(onboarding_data)),
+            _arun_clean(self.validator, json.dumps(onboarding_data)),
             asyncio.gather(*crm_tasks),
             _arun_clean(
                 self.closing_agent,

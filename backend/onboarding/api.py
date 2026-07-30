@@ -13,6 +13,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.text import slugify
 from django_q.tasks import async_task
+from django.core.cache import cache
+
+from .tasks import cancel_cache_key
 from ninja import Router, Status
 from ninja.files import UploadedFile
 from ninja import File as NinjaFile
@@ -365,8 +368,13 @@ def create_onboarding(request, data: OnboardingCreateIn):
     return Status(200, onboarding)
 
 
-@router.post('/{id}/attach-deal', response={200: OnboardingOut, 404: Error, 409: Error})
+@router.post(
+    '/{id}/attach-deal',
+    response={200: OnboardingOut, 403: Error, 404: Error, 409: Error},
+)
 def attach_deal(request, id: int, data: AttachDealIn):
+    if _is_desenvolvedor(request.auth):
+        return Status(403, Error(detail='Acesso negado'))
     ob = get_object_or_404(OnboardingForm, id=id)
     if (
         OnboardingForm.objects.filter(pipedrive_deal_id=data.pipedrive_deal_id)
@@ -709,27 +717,28 @@ def submit_onboarding(request, id: int):
         return Status(403, Error(detail='Acesso negado'))
     onboarding = get_object_or_404(OnboardingForm, id=id)
 
-    if onboarding.pipedrive_deal_id:
-        acked = set(
-            OnboardingRuleAck.objects.filter(onboarding=onboarding).values_list(
-                'rule_id', flat=True
-            )
+    acked = set(
+        OnboardingRuleAck.objects.filter(onboarding=onboarding).values_list(
+            'rule_id', flat=True
         )
-        if OnboardingRule.objects.filter(active=True).exclude(id__in=acked).exists():
-            return Status(
-                400,
-                Error(
-                    detail='Confirme todas as regras obrigatórias antes de sincronizar'
-                ),
-            )
+    )
+    if OnboardingRule.objects.filter(active=True).exclude(id__in=acked).exists():
+        return Status(
+            400,
+            Error(detail='Confirme todas as regras obrigatórias antes de finalizar'),
+        )
+
+    if onboarding.pipedrive_deal_id:
         try:
             create_note(
                 deal_id=onboarding.pipedrive_deal_id, content=_build_note(onboarding)
             )
         except Exception as e:
             return Status(400, Error(detail=f'Erro ao sincronizar com Pipedrive: {e}'))
+        onboarding.status = OnboardingForm.Status.SYNCED
+    else:
+        onboarding.status = OnboardingForm.Status.COMPLETE
 
-    onboarding.status = OnboardingForm.Status.SYNCED
     onboarding.save()
     return Status(200, onboarding)
 
@@ -839,6 +848,17 @@ def generate_materials(request, id: int, data: GenerateIn = None):
         template_knowledge_name,
     )
     return Status(202, material)
+
+
+@router.post('/{id}/generate/cancel', response={200: MaterialOut, 403: Error, 404: Error})
+def cancel_generate_materials(request, id: int):
+    if _is_desenvolvedor(request.auth):
+        return Status(403, Error(detail='Acesso negado'))
+    onboarding = get_object_or_404(OnboardingForm, id=id)
+    material = get_object_or_404(GeneratedMaterial, onboarding=onboarding)
+    if material.status in ('pending', 'running'):
+        cache.set(cancel_cache_key(onboarding.id), True, timeout=600)
+    return Status(200, material)
 
 
 @router.get('/{id}/materials', response={200: MaterialOut, 404: Error})

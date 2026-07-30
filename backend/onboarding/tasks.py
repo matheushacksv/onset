@@ -5,6 +5,14 @@ import re
 from .agents.schemas import CANONICAL_CHANNELS
 
 
+class GenerationCancelled(Exception):
+    """Levantada quando o usuário cancela uma geração de material em andamento."""
+
+
+def cancel_cache_key(onboarding_id: int) -> str:
+    return f'onb:cancel-gen:{onboarding_id}'
+
+
 def arm_reconcile(delay_minutes: int | None = None):
     """(Re)agenda UMA rodada de reconcile_recordings via django-q (ONCE).
 
@@ -217,9 +225,39 @@ def _build_template(material_id=None, knowledge_name=None):
     return None
 
 
+async def _run_cancellable(workflow, onboarding_data, template, cache_key):
+    """Roda o workflow numa Task cancelável, com watchdog fazendo polling do
+    cache a cada 1s. Cancelar mata a Task de verdade (corta chamadas HTTP em
+    andamento via CancelledError), não só descarta o resultado no fim."""
+    from asgiref.sync import sync_to_async
+    from django.core.cache import cache
+    from django.db import connection
+
+    def _check_cancel():
+        try:
+            return cache.get(cache_key)
+        finally:
+            # sync_to_async roda isso numa thread própria; sem fechar, a conexão
+            # do DatabaseCache fica pendurada nessa thread até CONN_MAX_AGE (60s).
+            connection.close()
+
+    main = asyncio.ensure_future(workflow.arun(onboarding_data, template=template))
+    while not main.done():
+        if await sync_to_async(_check_cancel)():
+            main.cancel()
+            try:
+                await main
+            except asyncio.CancelledError:
+                pass
+            raise GenerationCancelled()
+        await asyncio.wait({main}, timeout=1)
+    return main.result()
+
+
 def generate_materials_task(
     onboarding_id: int, template_material_id=None, template_knowledge_name=None
 ):
+    from django.core.cache import cache
     from .models import OnboardingForm, GeneratedMaterial
     from .agents.workflow import MaterialWorkflow, onboarding_to_dict
 
@@ -229,19 +267,29 @@ def generate_materials_task(
     material.save(update_fields=['status'])
 
     template = _build_template(template_material_id, template_knowledge_name)
+    cache_key = cancel_cache_key(onboarding_id)
+    # Sem limpeza aqui: a flag pode ter sido setada com o material ainda
+    # 'pending' (cancelado antes do worker pegar a task). O finally abaixo
+    # já limpa ao fim de cada execução, e a chave expira sozinha (timeout=600).
 
     try:
         workflow = MaterialWorkflow()
         result = asyncio.run(
-            workflow.arun(onboarding_to_dict(onboarding), template=template)
+            _run_cancellable(
+                workflow, onboarding_to_dict(onboarding), template, cache_key
+            )
         )
         material.crm = _strip_ctrl(_sanitize_crm(result.crm.model_dump()))
         material.closing = _strip_ctrl(result.closing.model_dump())
         material.qualification = _strip_ctrl(result.qualification.model_dump())
         material.quality_alerts = _strip_ctrl(result.quality_alerts)
         material.status = 'complete'
+    except GenerationCancelled:
+        material.status = 'cancelled'
     except Exception as e:
         material.status = 'failed'
         material.error = str(e)
+    finally:
+        cache.delete(cache_key)
     material.save()
 
